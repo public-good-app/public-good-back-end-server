@@ -27,6 +27,7 @@ public class Product {
     private Double price;
     private boolean availability;
     private Integer quantity;
+    private String imageURL;
 //    @Transient
 //    private Integer age;
 //    private LocalDate dob;
@@ -41,7 +42,8 @@ public class Product {
                    String retailer,
                    Double price,
                    boolean availability,
-                   Integer quantity) {
+                   Integer quantity,
+                   String imageURL) {
         this.id = id;
         this.name = name;
         this.brand = brand;
@@ -49,6 +51,7 @@ public class Product {
         this.price = price;
         this.availability = availability;
         this.quantity = quantity;
+        this.imageURL = imageURL;
     }
 
     public Product(String name,
@@ -56,13 +59,15 @@ public class Product {
                    String retailer,
                    Double price,
                    boolean availability,
-                   Integer quantity) {
+                   Integer quantity,
+                   String imageURL) {
         this.name = name;
         this.brand = brand;
         this.retailer = retailer;
         this.price = price;
         this.availability = availability;
         this.quantity = quantity;
+        this.imageURL = imageURL;
     }
 
 //    public Student(String name,
@@ -129,6 +134,14 @@ public class Product {
         this.quantity = quantity;
     }
 
+    public String getImageURL() {
+        return imageURL;
+    }
+
+    public void setImageURL(String imageURL) {
+        this.imageURL = imageURL;
+    }
+
 
 //    public Long getId() {
 //        return id;
@@ -173,13 +186,14 @@ public class Product {
     @Override
     public String toString() {
         return "Product{" +
-                "id=" + this.id +
-                ", name=" + this.name +
+                "id=" + id +
+                ", name=" + name +
                 ", brand=" + brand +
                 ", retailer=" + retailer +
                 ", price=" + price +
                 ", availability=" + availability +
                 ", quantity=" + quantity +
+                ", imageURL=" + imageURL +
                 '}';
     }
 }

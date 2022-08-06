@@ -39,7 +39,8 @@ public class ProductController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Double price,
             @RequestParam(required = false) boolean availability,
-            @RequestParam(required = false) Integer quantity) {
-        productService.updateProduct(productId, name, price, availability, quantity);
+            @RequestParam(required = false) Integer quantity,
+            @RequestParam(required = false) String imageURL) {
+        productService.updateProduct(productId, name, price, availability, quantity, imageURL);
     }
 }

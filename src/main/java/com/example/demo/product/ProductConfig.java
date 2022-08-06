@@ -16,7 +16,8 @@ public class ProductConfig {
 //    String retailer,
 //    Double price,
 //    boolean availability,
-//    Integer quantity
+//    Integer quantity,
+//    String imageURL
 
     @Bean
     CommandLineRunner commandLineRunner(ProductRepository repository) {
@@ -27,7 +28,8 @@ public class ProductConfig {
                     "Target",
                     47.99,
                     true,
-                    7);
+                    7,
+                    "someurllink.com/someimage47");
 
             Product enfamil2 = new Product(
                     "Enfamil 2",
@@ -35,7 +37,8 @@ public class ProductConfig {
                     "Target",
                     17.99,
                     true,
-                    11);
+                    11,
+                    "someurllink.com/someimage7");
 
             Product enfamil3 = new Product(
                     "Enfamil 2",
@@ -43,7 +46,8 @@ public class ProductConfig {
                     "Walmart",
                     19.99,
                     true,
-                    17);
+                    17,
+                    "someurllink.com/someimage17");
 
             Product enfamil4 = new Product(
                     "Enfamil 2",
@@ -51,7 +55,8 @@ public class ProductConfig {
                     "Walmart",
                     17.99,
                     false,
-                    null);
+                    null,
+                    "someurllink.com/someimage67");
 
             repository.saveAll(List.of(enfamil1, enfamil2, enfamil3, enfamil4));
         };

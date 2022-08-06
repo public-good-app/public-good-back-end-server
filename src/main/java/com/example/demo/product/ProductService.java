@@ -42,7 +42,7 @@ public class ProductService {
 
     // @Transactional makes the entity go into a managed state without need to use queries from StudentRepository
     @Transactional
-    public void updateProduct(Long productId, String name, Double price, boolean availability, Integer quantity) {
+    public void updateProduct(Long productId, String name, Double price, boolean availability, Integer quantity, String imageURL) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalStateException(
                         "product with id " + productId + " does not exist"));
@@ -61,6 +61,10 @@ public class ProductService {
 
         if (quantity != null && !Objects.equals(product.getQuantity(), quantity)) {
             product.setQuantity(quantity);
+        }
+
+        if (imageURL != null && imageURL.length() > 0 && !Objects.equals(product.getImageURL(), imageURL)) {
+            product.setImageURL(imageURL);
         }
 
 //        if (email != null && email.length() > 0 && !Objects.equals(student.getEmail(), email)) {
