@@ -29,7 +29,8 @@ public class ProductConfig {
                     47.99,
                     true,
                     7,
-                    "someurllink.com/someimage47");
+                    "someurllink.com/someimage47",
+                    "somebuylink.com/product47");
 
             Product enfamil2 = new Product(
                     "Enfamil 2",
@@ -38,7 +39,8 @@ public class ProductConfig {
                     17.99,
                     true,
                     11,
-                    "someurllink.com/someimage7");
+                    "someurllink.com/someimage7",
+                    "somebuylink.com/product7");
 
             Product enfamil3 = new Product(
                     "Enfamil 2",
@@ -47,7 +49,8 @@ public class ProductConfig {
                     19.99,
                     true,
                     17,
-                    "someurllink.com/someimage17");
+                    "someurllink.com/someimage17",
+                    "somebuylink.com/product17");
 
             Product enfamil4 = new Product(
                     "Enfamil 2",
@@ -56,7 +59,8 @@ public class ProductConfig {
                     17.99,
                     false,
                     null,
-                    "someurllink.com/someimage67");
+                    "someurllink.com/someimage67",
+                    "somebuylink.com/product67");
 
             repository.saveAll(List.of(enfamil1, enfamil2, enfamil3, enfamil4));
         };

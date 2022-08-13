@@ -28,6 +28,7 @@ public class Product {
     private boolean availability;
     private Integer quantity;
     private String imageURL;
+    private String buyURL;
 //    @Transient
 //    private Integer age;
 //    private LocalDate dob;
@@ -43,7 +44,8 @@ public class Product {
                    Double price,
                    boolean availability,
                    Integer quantity,
-                   String imageURL) {
+                   String imageURL,
+                   String buyURL) {
         this.id = id;
         this.name = name;
         this.brand = brand;
@@ -52,6 +54,7 @@ public class Product {
         this.availability = availability;
         this.quantity = quantity;
         this.imageURL = imageURL;
+        this.buyURL = buyURL;
     }
 
     public Product(String name,
@@ -60,7 +63,8 @@ public class Product {
                    Double price,
                    boolean availability,
                    Integer quantity,
-                   String imageURL) {
+                   String imageURL,
+                   String buyURL) {
         this.name = name;
         this.brand = brand;
         this.retailer = retailer;
@@ -68,6 +72,7 @@ public class Product {
         this.availability = availability;
         this.quantity = quantity;
         this.imageURL = imageURL;
+        this.buyURL = buyURL;
     }
 
 //    public Student(String name,
@@ -142,6 +147,14 @@ public class Product {
         this.imageURL = imageURL;
     }
 
+    public String getBuyURL() {
+        return buyURL;
+    }
+
+    public void setBuyURL(String buyURL) {
+        this.buyURL = buyURL;
+    }
+
 
 //    public Long getId() {
 //        return id;
@@ -194,6 +207,7 @@ public class Product {
                 ", availability=" + availability +
                 ", quantity=" + quantity +
                 ", imageURL=" + imageURL +
+                ", buyURL=" + buyURL +
                 '}';
     }
 }
