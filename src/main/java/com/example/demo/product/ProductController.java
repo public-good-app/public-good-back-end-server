@@ -49,7 +49,7 @@ public class ProductController {
     // OR, clear everything and only put new stuff in there every get
     // might not need to save, dynamically return from scraper as list of Products
     @GetMapping
-    public List<Product> getProducts(@RequestBody HashMap<String, String> queryParams) {
+    public List<Product> getProducts(@RequestParam HashMap<String, String> queryParams) {
 //    public List<Product> getProducts() {
 
         HashMap<String, HashMap> targetRes;
