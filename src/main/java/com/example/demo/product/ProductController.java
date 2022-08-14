@@ -49,18 +49,17 @@ public class ProductController {
     // OR, clear everything and only put new stuff in there every get
     // might not need to save, dynamically return from scraper as list of Products
     @GetMapping
-//    public List<Product> getProducts(@RequestBody HashMap<String, String> queryParams) {
-    public List<Product> getProducts() {
+    public List<Product> getProducts(@RequestBody HashMap<String, String> queryParams) {
+//    public List<Product> getProducts() {
 
         HashMap<String, HashMap> targetRes;
         HashMap<String, HashMap> walmartRes;
         List<Product> products = new ArrayList<>();
 
-        String searchStrWalmart = "organic%20tampons";
-        String searchStrTarget = "organic+tampons";
+        String searchStr = queryParams.get("searchStr");
 
         try {
-             targetRes = target(searchStrTarget);
+             targetRes = target(searchStr);
         } catch(IOException e) {
             System.out.println(e);
             return new ArrayList<>();
@@ -80,7 +79,7 @@ public class ProductController {
         }
 
         try {
-            walmartRes = walmart(searchStrWalmart);
+            walmartRes = walmart(searchStr);
         } catch(IOException e) {
             System.out.println(e);
             return new ArrayList<>();
