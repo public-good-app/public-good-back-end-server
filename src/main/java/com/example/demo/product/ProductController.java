@@ -58,25 +58,25 @@ public class ProductController {
 
         String searchStr = queryParams.get("searchStr");
 
-        try {
-             targetRes = target(searchStr);
-        } catch(IOException e) {
-            System.out.println(e);
-            return new ArrayList<>();
-        }
-
-        for (String productName : targetRes.keySet()) {
-            HashMap<String, String> productValues = targetRes.get(productName);
-            Set productKeySet = targetRes.get(productName).keySet();
-            Boolean availability = false;
-            if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
-                if (productValues.get("allStoresAvailability").equals("true")) {
-                    availability = true;
-                }
-                Product newProduct = new Product(productName, productValues.get("brand"), "Target", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
-                products.add(newProduct);
-            }
-        }
+//        try {
+//             targetRes = target(searchStr);
+//        } catch(IOException e) {
+//            System.out.println(e);
+//            return new ArrayList<>();
+//        }
+//
+//        for (String productName : targetRes.keySet()) {
+//            HashMap<String, String> productValues = targetRes.get(productName);
+//            Set productKeySet = targetRes.get(productName).keySet();
+//            Boolean availability = false;
+//            if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
+//                if (productValues.get("allStoresAvailability").equals("true")) {
+//                    availability = true;
+//                }
+//                Product newProduct = new Product(productName, productValues.get("brand"), "Target", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
+//                products.add(newProduct);
+//            }
+//        }
 
         try {
             walmartRes = walmart(searchStr);
