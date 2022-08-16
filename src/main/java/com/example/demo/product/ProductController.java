@@ -43,12 +43,16 @@ public class ProductController {
     @GetMapping
     public List<Product> getProducts(@RequestParam HashMap<String, String> queryParams) {
 //    public List<Product> getProducts() {
+        System.out.println(queryParams);
 
         HashMap<String, HashMap> targetRes;
         HashMap<String, HashMap> walmartRes;
         List<Product> products = new ArrayList<>();
 
-//        String searchStr = queryParams.get("searchStr");
+        String searchStr = queryParams.get("searchStr");
+        String zip_code = queryParams.get("zipCode");
+        Object target = queryParams.get("target");
+        Object walmart = queryParams.get("walmart");
 
 //        String searchStr = "tampons";
 //        String searchStr = "plan b";
@@ -57,12 +61,12 @@ public class ProductController {
 //        String searchStr = "antigen tests";
 //        String searchStr = "bicycle";
 //        String searchStr = "air conditioner";
-        String searchStr = "baby formula";
+//        String searchStr = "baby formula";
 
         // anything baby formula related has special redirect pages that cannot be accessed through the traditional api scraping route for all other search terms, need to handle separately
         if (searchStr.toLowerCase().contains("formula")) {
             try {
-                walmartRes = walmartBabyFormula();
+                walmartRes = walmartBabyFormula(walmart);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -78,7 +82,7 @@ public class ProductController {
             }
 
             try {
-                targetRes = targetBabyFormula();
+                targetRes = targetBabyFormula(zip_code, target);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -97,7 +101,7 @@ public class ProductController {
             }
         } else {
             try {
-                targetRes = target(searchStr);
+                targetRes = target(searchStr, zip_code, target);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -116,7 +120,7 @@ public class ProductController {
             }
 
             try {
-                walmartRes = walmart(searchStr);
+                walmartRes = walmart(searchStr, walmart);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -158,24 +162,35 @@ public class ProductController {
         productService.updateProduct(productId, name, price, availability, quantity, imageURL);
     }
 
-    public static HashMap<String, HashMap> target(String query_str) throws IOException {
+    public static HashMap<String, HashMap> target(String query_str, String zip_code, Object targetInfo) throws IOException {
 
         HashMap<String, HashMap> productsInfo = new HashMap<>();
         ArrayList<String> productsTCINs = new ArrayList<>();
 
-        // TO GET TITLE, BRAND, IMAGEURL, PRICE INFO
-//        String query_param = "baby diapers".replace(" ", "%20");
-        // user info
-        String query_param = query_str.replace(" ", "+");
-        String zip_code = "43065";
-        String latitude = "40.142"; // either user location or get store's lat long
-        String longitude = "-83.094"; // either user location or get store's lat long
-        String state = "OH";
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
 
-        // write something to fetch this info based on user info from store id table in db
-        String store_id = "2851";
-        String closest_stores = "2851%2C666%2C1236%2C1978%2C1969"; // ArrayList of 5 closest store IDs, join them with %2C
-        String store_name = "Powell".replace(" ", "%20");
+        String store_id = target.get("store_id");
+        String closest_stores = target.get("closest_stores");
+        String store_name = target.get("store_name").replace(" ", "%20");
+        String latitude = target.get("latitude");
+        String longitude = target.get("longitude");
+        String state = target.get("state");
+        String query_param = query_str.replace(" ", "+");
+
+//        // TO GET TITLE, BRAND, IMAGEURL, PRICE INFO
+////        String query_param = "baby diapers".replace(" ", "%20");
+//        // user info
+//        String query_param = query_str.replace(" ", "+");
+//        String zip_code = "43065";
+//        String latitude = "40.142"; // either user location or get store's lat long
+//        String longitude = "-83.094"; // either user location or get store's lat long
+//        String state = "OH";
+//
+//        // write something to fetch this info based on user info from store id table in db
+//        String store_id = "2851";
+//        String closest_stores = "2851%2C666%2C1236%2C1978%2C1969"; // ArrayList of 5 closest store IDs, join them with %2C
+//        String store_name = "Powell".replace(" ", "%20");
 
         // GET MATCHING PRODUCTS ARRAY
         URL url1 = new URL("https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&channel=WEB&count=24&default_purchasability_filter=true&include_sponsored=true&keyword=" + query_param + "&offset=0&page=%2Fs%2F" + query_param + "&platform=desktop&pricing_store_id=" + store_id + "&scheduled_delivery_store_id=" + store_id + "&store_ids=" + closest_stores + "&useragent=Mozilla%2F5.0+%28Macintosh%3B+Intel+Mac+OS+X+10_15_7%29+AppleWebKit%2F537.36+%28KHTML%2C+like+Gecko%29+Chrome%2F103.0.0.0+Safari%2F537.36&visitor_id=0182A3D3FCBE0201845B982AB4154957&zip=" + zip_code);
@@ -209,8 +224,6 @@ public class ProductController {
         String json1 = gson1.toJson(jsonElement1);
 
 //		System.out.println(json1);
-
-        ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>() {
         });
         Object data1 = jsonMap1.get("data");
@@ -377,12 +390,16 @@ public class ProductController {
         return productsInfo;
     }
 
-    public static HashMap<String, HashMap> walmart(String query_str) throws IOException {
+    public static HashMap<String, HashMap> walmart(String query_str, Object walmartInfo) throws IOException {
         HashMap<String, HashMap> products = new HashMap<>();
         String response = "";
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
+
         // user info
         String query_param = query_str.replace(" ", "%20");
+        String store_id = walmart.get("store_id");
 
 //        String zip_code = "98104"; // Seattle, WA
 //        String store_id = "3098"; // Renton, WA
@@ -396,8 +413,8 @@ public class ProductController {
 //        String zip_code = "60645"; // Chicago, IL
 //        String store_id = "4177"; // Lincolnwood, IL
 //
-        String zip_code = "10027"; // New York, NY
-        String store_id = "3795"; // North Bergen, NJ
+//        String zip_code = "10027"; // New York, NY
+//        String store_id = "3795"; // North Bergen, NJ
 
         // unused params
 //        String latitude = "40.142"; // either user location or get store's lat long
@@ -636,7 +653,6 @@ public class ProductController {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(jsonElement);
 
-        ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
         });
         Object data = jsonMap.get("data");
@@ -858,15 +874,20 @@ public class ProductController {
 //		System.out.println(json);
     }
 
-    public static HashMap<String, HashMap> walmartBabyFormula() throws IOException {
+    public static HashMap<String, HashMap> walmartBabyFormula(Object walmartInfo) throws IOException {
 
         HashMap<String, HashMap> products = new HashMap<>();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
+
+        String store_id = walmart.get("store_id");
 //        String response = "";
 //        String store_id = "3098"; // Bellevue, WA
 //        String store_id = "2774"; // Dublin, OH
 //        String store_id = "2137"; // Durham, NC
 //        String store_id = "4177"; // Lincolnwood, IL
-        String store_id = "3795"; // North Bergen, NJ
+//        String store_id = "3795"; // North Bergen, NJ
 
         URL url = new URL("https://www.walmart.com/orchestra/home/graphql/browse?affinityOverride=default&page=1&prg=desktop&catId=5427_133283_4720344&sort=best_match&ps=40&searchArgs.cat_id=5427_133283_4720344&searchArgs.prg=desktop&fitmentFieldParams=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=false&enablePortableFacets=true&tenant=WM_GLASS&enableFacetCount=true&marketSpecificParams=undefined");
         HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
@@ -922,7 +943,6 @@ public class ProductController {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(jsonElement);
 
-        ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
         });
         Object data = jsonMap.get("data");
@@ -1118,21 +1138,30 @@ public class ProductController {
 //            System.out.println("--------------------------------------------------------");
 //        }
 //}
-public static HashMap<String, HashMap> targetBabyFormula() throws IOException {
+public static HashMap<String, HashMap> targetBabyFormula(String zip_code, Object targetInfo) throws IOException {
     HashMap<String, HashMap> productsInfo = new HashMap<>();
     ArrayList<String> productsTCINs = new ArrayList<>();
 
-//    String query_param = query_str.replace(" ", "+");
-    String query_param = "baby+formula";
-    String zip_code = "43065";
-    String latitude = "40.142"; // either user location or get store's lat long
-    String longitude = "-83.094"; // either user location or get store's lat long
-    String state = "OH";
+    ObjectMapper objectMapper = new ObjectMapper();
+    Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
 
-    // write something to fetch this info based on user info from store id table in db
-    String store_id = "2851";
-    String closest_stores = "2851%2C666%2C1236%2C1978%2C1969"; // ArrayList of 5 closest store IDs, join them with %2C
-    String store_name = "Powell".replace(" ", "%20");
+    String store_id = target.get("store_id");
+    String closest_stores = target.get("closest_stores");
+    String store_name = target.get("store_name").replace(" ", "%20");
+    String latitude = target.get("latitude");
+    String longitude = target.get("longitude");
+    String state = target.get("state");
+
+////    String query_param = query_str.replace(" ", "+");
+//    String query_param = "baby+formula";
+//    String zip_code = "43065";
+//    String latitude = "40.142"; // either user location or get store's lat long
+//    String longitude = "-83.094"; // either user location or get store's lat long
+//    String state = "OH";
+//    // write something to fetch this info based on user info from store id table in db
+//    String store_id = "2851";
+//    String closest_stores = "2851%2C666%2C1236%2C1978%2C1969"; // ArrayList of 5 closest store IDs, join them with %2C
+//    String store_name = "Powell".replace(" ", "%20");
 
     URL url1 = new URL("https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&category=5xtkh&channel=WEB&count=24&default_purchasability_filter=true&include_sponsored=true&offset=0&page=%2Fc%2F5xtkh&platform=desktop&pricing_store_id=" + store_id + "&scheduled_delivery_store_id=" + store_id + "&store_ids=" + closest_stores + "&useragent=Mozilla%2F5.0+%28Macintosh%3B+Intel+Mac+OS+X+10_15_7%29+AppleWebKit%2F537.36+%28KHTML%2C+like+Gecko%29+Chrome%2F103.0.0.0+Safari%2F537.36&visitor_id=0182A834AB4902018CB76982CD0AAFFC&zip=" + zip_code);
     HttpURLConnection httpConn1 = (HttpURLConnection) url1.openConnection();
@@ -1165,7 +1194,6 @@ public static HashMap<String, HashMap> targetBabyFormula() throws IOException {
     Gson gson1 = new GsonBuilder().setPrettyPrinting().create();
     String json1 = gson1.toJson(jsonElement1);
 
-    ObjectMapper objectMapper = new ObjectMapper();
     Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>() {
     });
     Object data1 = jsonMap1.get("data");
@@ -1226,7 +1254,7 @@ public static HashMap<String, HashMap> targetBabyFormula() throws IOException {
     String productsTCINsStr = String.join("%2C", productsTCINs);
 
     // TO GET AVAILABILITY INFO AND BUY URL FROM FULFILLMENT DATA
-    URL url = new URL("https://redsky.target.com/redsky_aggregations/v1/web_platform/product_summary_with_fulfillment_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&tcins=" + productsTCINsStr + "&store_id" + store_id + "&zip=" + zip_code + "&state=" + state + "&latitude=" + latitude + "&longitude=" + longitude + "&scheduled_delivery_store_id=" + store_id + "&required_store_id=" + store_id + "&has_required_store_id=true&channel=WEB&page=%2Fs%2F" + query_param);
+    URL url = new URL("https://redsky.target.com/redsky_aggregations/v1/web_platform/product_summary_with_fulfillment_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&tcins=" + productsTCINsStr + "&store_id" + store_id + "&zip=" + zip_code + "&state=" + state + "&latitude=" + latitude + "&longitude=" + longitude + "&scheduled_delivery_store_id=" + store_id + "&required_store_id=" + store_id + "&has_required_store_id=true&channel=WEB&page=%2Fs%2Fbaby+formula");
     HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
     httpConn.setRequestMethod("GET");
 
@@ -1237,7 +1265,7 @@ public static HashMap<String, HashMap> targetBabyFormula() throws IOException {
     httpConn.setRequestProperty("cookie", "TealeafAkaSid=tW3sNScU-pf8QSWSBc4Dx8IhHnSIJ3G_; visitorId=0182A3D3FCBE0201845B982AB4154957; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; egsSessionId=528e5218-c05f-4434-b220-0970933cd8dd; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwianRpIjoiVEdULmNjNWUxYzUyNTUwNDRhNTFiY2Y4YzFkZDk2MGNiNDVmLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjQ4NTY1YWZiYWE2YzFiYjVmNjNkMTQ0ZTdmNjhlODYxMTU5YmQzZTczY2I0MjZjZTFjNTliOTI5MzI3ZDk5NGYiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.QRCI69lR_mSLIsnADDBYTVzlViOX5DNO4d-QNDbExhC0mFmEpn0mUED8L1g-XbB-_RLd8FH3ea2oC6fiEvb-VDOArr23IxklKnwTczlFx-8ukshGWpSrLBLmzr85sk0NO61Gb6wwUNcKfylAfO2ddm6oAa0b_wKehZr4N6oP2QbdKAi__OQXyMftyftLBRAUSvpOM9_zXB1UKysyqKK9nBTyBKi-SjgEsQNweBBwkZwbGBpqMcp7Urt6s8xCB3ciwjOQSG29rzYn_6OCdwvZVusvTS6ND6K2uS7Ut8gBLstl37MDGkXpIALAsD_6sVGyFXjiVogykPhGaWLhuhUuQw; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=YOQvrhY0Rc1OTlqCUPaQmCAQYYDyJl1hHAp2OyABjfmzyRYUPgVA0XYZ3iY03WMIVq1JWQ3U8UGbLuno1pzIog; __gads=ID=fcacfef16f82cade-22572175a1d400ad:T=1660605956:S=ALNI_MaeY6UxbBLJ7EheMAjpRt-PO6D3Pw; __gpi=UID=000007e4b59ef825:T=1660605956:RT=1660605956:S=ALNI_MbwRsUmwavf2MpuVsBXPiDrT7vBBw; ffsession={%22sessionHash%22:%22a38d7281033411660605955675%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:1}; ci_pixmgr=other; _uetsid=9d41daf01cf111ed8a934fc144aa43e9; _uetvid=9d41d7f01cf111edb1e87102d88101e0; _gcl_au=1.1.949956296.1660605957; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; _mitata=ZTJlZmJiYjVkYjUyOGQzZjM0YTM1NmVmZWY4ZTU2YzFiMzlkNzQ1OGZhOGZiNWUyZjc2YzkxNzhhNTkyNjY1ZQ==_/@#/1660606098_/@#/cyk4HguDDTbQp3kn_/@#/Y2EzMWVlZmQwMjA0NWVjOWZhMmRmMTgyMjc0M2MyMDYwZWRmOGMwY2M3ZTdkMzc3MzI3ZDk2ZDI2NDZmMDBkNg==_/@#/000");
     httpConn.setRequestProperty("origin", "https://www.target.com");
     httpConn.setRequestProperty("pragma", "no-cache");
-    httpConn.setRequestProperty("referer", "https://www.target.com/s?searchTerm=" + query_param);
+    httpConn.setRequestProperty("referer", "https://www.target.com/s?searchTerm=baby+formula");
     httpConn.setRequestProperty("sec-ch-ua", "\".Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"103\", \"Chromium\";v=\"103\"");
     httpConn.setRequestProperty("sec-ch-ua-mobile", "?0");
     httpConn.setRequestProperty("sec-ch-ua-platform", "\"macOS\"");
