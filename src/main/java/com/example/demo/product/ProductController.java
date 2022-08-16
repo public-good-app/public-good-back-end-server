@@ -1,5 +1,6 @@
 package com.example.demo.product;
 
+import jdk.swing.interop.SwingInterOpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,52 +49,90 @@ public class ProductController {
         List<Product> products = new ArrayList<>();
 
 //        String searchStr = queryParams.get("searchStr");
-        String searchStr = "tampons";
 
-        try {
-             targetRes = target(searchStr);
-        } catch(IOException e) {
-            System.out.println(e);
-            return new ArrayList<>();
-        }
+//        String searchStr = "tampons";
+//        String searchStr = "plan b";
+//        String searchStr = "emergency contraception";
+//        String searchStr = "covid tests";
+//        String searchStr = "antigen tests";
+//        String searchStr = "bicycle";
+//        String searchStr = "air conditioner";
+        String searchStr = "baby formula";
 
-        for (String productName : targetRes.keySet()) {
-            HashMap<String, String> productValues = targetRes.get(productName);
-            Set productKeySet = targetRes.get(productName).keySet();
-            Boolean availability = false;
-            if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
-                if (productValues.get("allStoresAvailability").equals("true")) {
+        // anything baby formula related has special redirect pages that cannot be accessed through the traditional api scraping route for all other search terms, need to handle separately
+        if (searchStr.toLowerCase().contains("formula")) {
+            try {
+                walmartRes = walmartBabyFormula();
+            } catch (IOException e) {
+                System.out.println(e);
+                return new ArrayList<>();
+            }
+            for (String productId : walmartRes.keySet()) {
+                HashMap<String, String> productValues = walmartRes.get(productId);
+                Boolean availability = false;
+                if (productValues.get("availability").equals("true")) {
                     availability = true;
                 }
-                Product newProduct = new Product(productName, productValues.get("brand"), "Target", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
+                Product newProduct = new Product(productValues.get("name"), productValues.get("brand"), "Walmart", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
+                products.add(newProduct);
+            }
+
+            try {
+                targetRes = targetBabyFormula();
+            } catch (IOException e) {
+                System.out.println(e);
+                return new ArrayList<>();
+            }
+            for (String productName : targetRes.keySet()) {
+                HashMap<String, String> productValues = targetRes.get(productName);
+                Set productKeySet = targetRes.get(productName).keySet();
+                Boolean availability = false;
+                if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
+                    if (productValues.get("allStoresAvailability").equals("true")) {
+                        availability = true;
+                    }
+                    Product newProduct = new Product(productName, productValues.get("brand"), "Target", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
+                    products.add(newProduct);
+                }
+            }
+        } else {
+            try {
+                targetRes = target(searchStr);
+            } catch (IOException e) {
+                System.out.println(e);
+                return new ArrayList<>();
+            }
+            for (String productName : targetRes.keySet()) {
+                HashMap<String, String> productValues = targetRes.get(productName);
+                Set productKeySet = targetRes.get(productName).keySet();
+                Boolean availability = false;
+                if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
+                    if (productValues.get("allStoresAvailability").equals("true")) {
+                        availability = true;
+                    }
+                    Product newProduct = new Product(productName, productValues.get("brand"), "Target", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
+                    products.add(newProduct);
+                }
+            }
+
+            try {
+                walmartRes = walmart(searchStr);
+            } catch (IOException e) {
+                System.out.println(e);
+                return new ArrayList<>();
+            }
+            for (String productId : walmartRes.keySet()) {
+                HashMap<String, String> productValues = walmartRes.get(productId);
+                Boolean availability = false;
+                if (productValues.get("availability").equals("true")) {
+                    availability = true;
+                }
+                Product newProduct = new Product(productValues.get("name"), productValues.get("brand"), "Walmart", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
                 products.add(newProduct);
             }
         }
 
-        try {
-            walmartRes = walmart(searchStr);
-        } catch(IOException e) {
-            System.out.println(e);
-            return new ArrayList<>();
-        }
-
-        for (String productId : walmartRes.keySet()) {
-            HashMap<String, String> productValues = walmartRes.get(productId);
-//            Set productKeySet = targetRes.get(productId).keySet();
-//            Boolean availability = false;
-//            if (productKeySet.contains("buyURL") && productKeySet.contains("allStoresAvailability")) {
-//                if (productValues.get("allStoresAvailability").equals("true")) {
-//                    availability = true;
-//                }
-            Boolean availability = false;
-            if (productValues.get("availability").equals("true")) {
-                availability = true;
-            }
-            Product newProduct = new Product(productValues.get("name"), productValues.get("brand"), "Walmart", Double.parseDouble(productValues.get("price")), availability, null, productValues.get("imageURL"), productValues.get("buyURL"));
-            products.add(newProduct);
-//            }
-        }
-
+        System.out.println(products);
         return products;
 //        return productService.getProducts();
     }
@@ -172,7 +211,8 @@ public class ProductController {
 //		System.out.println(json1);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>(){});
+        Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>() {
+        });
         Object data1 = jsonMap1.get("data");
 
         Map<String, Object> dataMap1 = objectMapper.convertValue(data1, Map.class);
@@ -202,11 +242,13 @@ public class ProductController {
             productsTCINs.add(productTCINStr);
 
             // get brand name
-            Object brandInfo = itemMap.get("primary_brand");
-            Map<String, Object> brandInfoMap = objectMapper.convertValue(brandInfo, Map.class);
-            Object brandName = brandInfoMap.get("name");
-            String brandNameStr = objectMapper.convertValue(brandName, String.class);
-            productInfo.put("brand", brandNameStr);
+            if (itemMap.get("primary_brand") != null) {
+                Object brandInfo = itemMap.get("primary_brand");
+                Map<String, Object> brandInfoMap = objectMapper.convertValue(brandInfo, Map.class);
+                Object brandName = brandInfoMap.get("name");
+                String brandNameStr = objectMapper.convertValue(brandName, String.class);
+                productInfo.put("brand", brandNameStr);
+            }
 
             // get price
             Object price = productMap.get("price");
@@ -229,7 +271,7 @@ public class ProductController {
         String productsTCINsStr = String.join("%2C", productsTCINs);
 
         // TO GET AVAILABILITY INFO AND BUY URL FROM FULFILLMENT DATA
-        URL url = new URL("https://redsky.target.com/redsky_aggregations/v1/web_platform/product_summary_with_fulfillment_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&tcins=" + productsTCINsStr + "&store_id"+ store_id +"&zip=" + zip_code + "&state=" + state + "&latitude=" + latitude + "&longitude=" + longitude + "&scheduled_delivery_store_id=" + store_id + "&required_store_id=" + store_id + "&has_required_store_id=true&channel=WEB&page=%2Fs%2F" + query_param);
+        URL url = new URL("https://redsky.target.com/redsky_aggregations/v1/web_platform/product_summary_with_fulfillment_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&tcins=" + productsTCINsStr + "&store_id" + store_id + "&zip=" + zip_code + "&state=" + state + "&latitude=" + latitude + "&longitude=" + longitude + "&scheduled_delivery_store_id=" + store_id + "&required_store_id=" + store_id + "&has_required_store_id=true&channel=WEB&page=%2Fs%2F" + query_param);
         HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
         httpConn.setRequestMethod("GET");
 
@@ -259,10 +301,8 @@ public class ProductController {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(jsonElement);
 
-        System.out.println("LOOK AT THIS");
-//        System.out.println(json);
-
-        Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>(){});
+        Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
         Object data = jsonMap.get("data");
 
         Map<String, ArrayList<Object>> dataMap = objectMapper.convertValue(data, Map.class);
@@ -335,9 +375,6 @@ public class ProductController {
         }
 
         return productsInfo;
-//        Gson gsonFinal = new GsonBuilder().setPrettyPrinting().create();
-//        String jsonFinal = gson.toJson(productsInfo);
-//        System.out.println(jsonFinal);
     }
 
     public static HashMap<String, HashMap> walmart(String query_str) throws IOException {
@@ -412,7 +449,7 @@ public class ProductController {
                     : httpConn.getErrorStream();
             Scanner s = new Scanner(responseStream).useDelimiter("\\A");
             response = s.hasNext() ? s.next() : "";
-        // 10027 (New York, NY)
+            // 10027 (New York, NY)
         } else if (store_id.equals("3795")) {
             System.out.println("NORTH BERGEN, NJ");
             URL url = new URL("https://www.walmart.com/orchestra/home/graphql/search?query=" + query_param + "&page=1&prg=desktop&sort=best_match&ps=40&searchArgs.query=" + query_param + "&searchArgs.prg=desktop&fitmentFieldParams=true&enablePortableFacets=true&enableFacetCount=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=true&tenant=WM_GLASS");
@@ -455,7 +492,7 @@ public class ProductController {
                     : httpConn.getErrorStream();
             Scanner s = new Scanner(responseStream).useDelimiter("\\A");
             response = s.hasNext() ? s.next() : "";
-        // 43017 (Columbus, OH)
+            // 43017 (Columbus, OH)
         } else if (store_id.equals("2774")) {
             System.out.println("COLUMBUS, OH");
             URL url = new URL("https://www.walmart.com/orchestra/home/graphql/search?query=" + query_param + "&page=1&prg=desktop&sort=best_match&ps=40&searchArgs.query=" + query_param + "&searchArgs.prg=desktop&fitmentFieldParams=true&enablePortableFacets=true&enableFacetCount=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=true&tenant=WM_GLASS");
@@ -498,7 +535,7 @@ public class ProductController {
                     : httpConn.getErrorStream();
             Scanner s = new Scanner(responseStream).useDelimiter("\\A");
             response = s.hasNext() ? s.next() : "";
-        // 27514 (Chapel Hill, NC)
+            // 27514 (Chapel Hill, NC)
         } else if (store_id.equals("2137")) {
             System.out.println("CHAPEL HILL, NC");
             URL url = new URL("https://www.walmart.com/orchestra/home/graphql/search?query=" + query_param + "&page=1&prg=desktop&sort=best_match&ps=40&searchArgs.query=" + query_param + "&searchArgs.prg=desktop&fitmentFieldParams=true&enablePortableFacets=true&enableFacetCount=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=true&tenant=WM_GLASS");
@@ -541,7 +578,7 @@ public class ProductController {
                     : httpConn.getErrorStream();
             Scanner s = new Scanner(responseStream).useDelimiter("\\A");
             response = s.hasNext() ? s.next() : "";
-        // 60645 (Chicago, IL)
+            // 60645 (Chicago, IL)
         } else if (store_id.equals("4177")) {
             System.out.println("CHICAGO, IL");
             URL url = new URL("https://www.walmart.com/orchestra/home/graphql/search?query=" + query_param + "&page=1&prg=desktop&sort=best_match&ps=40&searchArgs.query=" + query_param + "&searchArgs.prg=desktop&fitmentFieldParams=true&enablePortableFacets=true&enableFacetCount=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=true&tenant=WM_GLASS");
@@ -599,8 +636,6 @@ public class ProductController {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(jsonElement);
 
-        System.out.println(json);
-
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
         });
@@ -614,8 +649,6 @@ public class ProductController {
 
         Object modules = contentLayoutMap.get("modules");
         ArrayList<Object> modulesAL = objectMapper.convertValue(modules, ArrayList.class);
-
-        System.out.println(String.format("LENGTH OF MODULES LIST: %d", modulesAL.size()));
 
         Object chosenModule = modulesAL.get(1);
         Map<String, Object> moduleMap = objectMapper.convertValue(chosenModule, Map.class);
@@ -645,9 +678,6 @@ public class ProductController {
             brands.put(brandInfo.get("name").toLowerCase(), brandInfo.get("name"));
         }
 
-        System.out.println("BRANDS!!!");
-        System.out.println(brands);
-
         // GETTING PRODUCTS
 
         Object search = dataMap.get("search");
@@ -668,7 +698,7 @@ public class ProductController {
 
         for (Object o : itemsAL) {
 
-            HashMap<String,String> newProduct = new HashMap<>();
+            HashMap<String, String> newProduct = new HashMap<>();
 
             Map<String, Object> item = objectMapper.convertValue(o, Map.class);
 
@@ -730,15 +760,18 @@ public class ProductController {
             // get price
             Map<String, Object> itemPriceInfo = objectMapper.convertValue(item.get("priceInfo"), Map.class);
             if (itemPriceInfo.get("currentPrice") != null) {
-                Map<String, Integer> itemCurPrice = objectMapper.convertValue(itemPriceInfo.get("currentPrice"), Map.class);
+                Map<String, Object> itemCurPrice = objectMapper.convertValue(itemPriceInfo.get("currentPrice"), Map.class);
                 Object price = itemCurPrice.get("price");
-                String priceStr = objectMapper.convertValue(price, String.class);
+                Double priceDouble = objectMapper.convertValue(price, Double.class);
+                String priceStr = objectMapper.convertValue(priceDouble, String.class);
 //				System.out.println("price: " + itemCurPrice.get("price"));
                 newProduct.put("price", priceStr);
             } else if (itemPriceInfo.get("priceRange") != null) {
-                Map<String, Double> itemPriceRange = objectMapper.convertValue(itemPriceInfo.get("priceRange"), Map.class);
-                Double minPrice = itemPriceRange.get("minPrice");
-                Double maxPrice = itemPriceRange.get("maxPrice");
+                Map<String, Object> itemPriceRange = objectMapper.convertValue(itemPriceInfo.get("priceRange"), Map.class);
+                Object minPrice = itemPriceRange.get("minPrice");
+                Double minPriceDouble = objectMapper.convertValue(minPrice, Double.class);
+                Object maxPrice = itemPriceRange.get("maxPrice");
+                Double maxPriceDouble = objectMapper.convertValue(maxPrice, Double.class);
                 if (minPrice != maxPrice) {
 //					System.out.println("min price: " + minPrice);
 //					System.out.println("max price: " + maxPrice);
@@ -749,7 +782,6 @@ public class ProductController {
                     String maxPriceStr = objectMapper.convertValue(maxPrice, String.class);
                     newProduct.put("price", maxPriceStr);
                 }
-
             }
 
             // get thumbnail image URL
@@ -761,13 +793,11 @@ public class ProductController {
 //			System.out.println("imageURL: " + thumbnailURL);
 //			System.out.println("--------------------------------------------------------");
         }
+        return products;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // GET INDIVIDUAL PICKUP VS DELIVERY VS SHIPPING AVAILABILITY OPTIONS
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        return products;
-
-
 //		URL url = new URL("https://www.walmart.com/orchestra/home/graphql/ip");
 //		HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
 //		httpConn.setRequestMethod("POST");
@@ -827,6 +857,480 @@ public class ProductController {
 //		String json = gson.toJson(jsonElement);
 //		System.out.println(json);
     }
+
+    public static HashMap<String, HashMap> walmartBabyFormula() throws IOException {
+
+        HashMap<String, HashMap> products = new HashMap<>();
+//        String response = "";
+//        String store_id = "3098"; // Bellevue, WA
+//        String store_id = "2774"; // Dublin, OH
+//        String store_id = "2137"; // Durham, NC
+//        String store_id = "4177"; // Lincolnwood, IL
+        String store_id = "3795"; // North Bergen, NJ
+
+        URL url = new URL("https://www.walmart.com/orchestra/home/graphql/browse?affinityOverride=default&page=1&prg=desktop&catId=5427_133283_4720344&sort=best_match&ps=40&searchArgs.cat_id=5427_133283_4720344&searchArgs.prg=desktop&fitmentFieldParams=true&fetchMarquee=true&fetchSkyline=true&fetchSbaTop=false&enablePortableFacets=true&tenant=WM_GLASS&enableFacetCount=true&marketSpecificParams=undefined");
+        HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
+        httpConn.setRequestMethod("POST");
+
+        httpConn.setRequestProperty("authority", "www.walmart.com");
+        httpConn.setRequestProperty("accept", "application/json");
+        httpConn.setRequestProperty("accept-language", "en-US,en;q=0.9");
+        httpConn.setRequestProperty("cache-control", "no-cache");
+        httpConn.setRequestProperty("content-type", "application/json");
+        httpConn.setRequestProperty("cookie", "auth=MTAyOTYyMDE4rW%2B7H602S2b6n1WayljgUiMWILgXp0sMGo3xLmp1GcLGyZvl%2FV%2BqOb%2B8Imq5KcWZr9dc4qpXnjdnXf6XzxT4WjEEN1Au8PQAD7wuTu7QqJ9lzQKPU%2Fg2hpJm5OAIYat6767wuZloTfhm7Wk2Kcjygv3M5Jnvc7ePkiG6%2BkglNABvrRNtdllI6HdrStY6VRzw7ZkH6rBvCROUtbdMQ8gkz42PfNz5Ol9qQf8LXIM0E3EUMk70P8glgOEpLOprhDfMM%2FFHGZ2dCNmxWrdkwqEKrveQRy%2B5k1OODgi6%2BbP7dZee6c5U%2FtP9JfbHBXEJTeo3AB0LijKst1AYYjfYwTpOTXgT9EO6FQkGtNwSN42wkh3IhJoc67KGKL5ZMkquUDC2vGgFha9o91ueqA9QpQS6ekjyrOXbKKhH072NS%2FW0j%2FU%3D; ACID=d8dcccf2-3479-4abb-89db-a0223b6c4ff1; hasACID=true; assortmentStoreId=" + store_id + "; hasLocData=1; TB_Latency_Tracker_100=1; TB_Navigation_Preload_01=1; TB_SFOU-100=; vtc=RDshC1kugEE82Hsc2iCV6k; bstc=RDshC1kugEE82Hsc2iCV6k; mobileweb=0; xpa=0NcOK|0t4gT|1A0pE|2Oqb6|2SWkj|2t453|5_9FA|927zv|AQhLM|AYraE|Af1yH|CN28l|HDfyl|IouYg|LTD5Y|Nnski|P_fCM|PhqzS|PzQ_l|RE_dK|RZlxg|XBPw9|bcl64|ccDGr|g8z9_|iT-9R|ibBir|lqVt_|nzyw-|odFJG|pGAhC|qyn67|sbXp_|uJQh6|w_GEw|yxNJ6|zCylr; exp-ck=0NcOK10t4gT12SWkj12t45315_9FA2927zv1AQhLM1Af1yH1HDfyl2IouYg2Nnski1PzQ_l1XBPw91ccDGr1g8z9_1ibBir1nzyw-1odFJG1pGAhC1qyn672w_GEw1yxNJ65; _pxhd=507c57269a4e3c903ec9533b76cd420f6cb910847e67aa447d95562da395a500:e3b8065b-1d91-11ed-9587-595449755955; adblocked=false; TBV=7; xpm=1%2B1660674794%2BRDshC1kugEE82Hsc2iCV6k~%2B0; pxcts=e4b9a181-1d91-11ed-bfc3-6d7350527a4e; _pxvid=e3b8065b-1d91-11ed-9587-595449755955; ak_bmsc=BA90273CE586D373BA8416BFE4591535~000000000000000000000000000000~YAAQT40duGoR3GOCAQAAp2zupxDNABf70Dv3XoJxdTt6rst/CgXv5CIlkk4Xas3u8XZ29uPe4g+ZP7frwCD/xofQusk7nhFuCCkqj6tV6a5ai+gbVq53gURc9GXkAgh8ojZtor2g+X0t6Gc3Mu6ApGyWa/8IlD+eeO4NgQkJfvtxK8us99RdfkpZ97srV9S7qa1bLpIcsqb9lp3bEEYf937sW/cYQDldQrZ1GSCflNSgoqixBjkQ3RgdO7LwIzfa4aiVRRQ8Wbv0lVCU6wNWqZjx3BnE1H4MnzKinNcmxVyRcveExN5SFZFtFOmzNV4b7xSrRtKh3AAZsanzx4Pczd3UqDDENB8Kbk9J8G91Fmo/2jvA/jHNpwdagqh6KB2m3cxHfV0IeJhsB/WqFXK89NVGr7iKpR5DeV6cL2cspWYQh6v3Ipo89t4oe8f5W3aWCJnfeBy8ZhApmopa9JuqUNMerR9eHMNyTG1UT2TFZHHJs0QQTSwFWyPwEyQ+; locDataV3=eyJpc0RlZmF1bHRlZCI6ZmFsc2UsImlzRXhwbGljaXQiOmZhbHNlLCJpbnRlbnQiOiJTSElQUElORyIsInBpY2t1cCI6W3siYnVJZCI6IjAiLCJub2RlSWQiOiIyNTE2IiwiZGlzcGxheU5hbWUiOiJSZW50b24gU3VwZXJjZW50ZXIiLCJub2RlVHlwZSI6IlNUT1JFIiwiYWRkcmVzcyI6eyJwb3N0YWxDb2RlIjoiOTgwNTciLCJhZGRyZXNzTGluZTEiOiI3NDMgUmFpbmllciBBdmVudWUgU291dGgiLCJjaXR5IjoiUmVudG9uIiwic3RhdGUiOiJXQSIsImNvdW50cnkiOiJVUyIsInBvc3RhbENvZGU5IjoiOTgwNTctMzIwNCJ9LCJnZW9Qb2ludCI6eyJsYXRpdHVkZSI6NDcuNDcyMTUzLCJsb25naXR1ZGUiOi0xMjIuMjIxMDg4fSwiaXNHbGFzc0VuYWJsZWQiOnRydWUsInNjaGVkdWxlZEVuYWJsZWQiOnRydWUsInVuU2NoZWR1bGVkRW5hYmxlZCI6dHJ1ZSwiaHViTm9kZUlkIjoiMjUxNiIsInN0b3JlSHJzIjoiMDY6MDAtMjM6MDAiLCJzdXBwb3J0ZWRBY2Nlc3NUeXBlcyI6WyJQSUNLVVBfQ1VSQlNJREUiLCJCQUtFUllfUElDS1VQIiwiUElDS1VQX0lOU1RPUkUiLCJQSUNLVVBfU1BFQ0lBTF9FVkVOVCJdfV0sInNoaXBwaW5nQWRkcmVzcyI6eyJsYXRpdHVkZSI6NDcuNTc0MywibG9uZ2l0dWRlIjotMTIyLjM5NDIsInBvc3RhbENvZGUiOiI5ODExNiIsImNpdHkiOiJTZWF0dGxlIiwic3RhdGUiOiJXQSIsImNvdW50cnlDb2RlIjoiVVNBIiwiZ2lmdEFkZHJlc3MiOmZhbHNlfSwiYXNzb3J0bWVudCI6eyJub2RlSWQiOiIyNTE2IiwiZGlzcGxheU5hbWUiOiJSZW50b24gU3VwZXJjZW50ZXIiLCJhY2Nlc3NQb2ludHMiOm51bGwsInN1cHBvcnRlZEFjY2Vzc1R5cGVzIjpbXSwiaW50ZW50IjoiUElDS1VQIiwic2NoZWR1bGVFbmFibGVkIjpmYWxzZX0sImluc3RvcmUiOmZhbHNlLCJyZWZyZXNoQXQiOjE2NjA2OTYzOTYzNDYsInZhbGlkYXRlS2V5IjoicHJvZDp2MjpkOGRjY2NmMi0zNDc5LTRhYmItODlkYi1hMDIyM2I2YzRmZjEifQ%3D%3D; locGuestData=eyJpbnRlbnQiOiJTSElQUElORyIsImlzRXhwbGljaXQiOmZhbHNlLCJzdG9yZUludGVudCI6IlBJQ0tVUCIsIm1lcmdlRmxhZyI6ZmFsc2UsImlzRGVmYXVsdGVkIjpmYWxzZSwicGlja3VwIjp7Im5vZGVJZCI6IjI1MTYiLCJ0aW1lc3RhbXAiOjE2NjA2NzQ3OTYzMzR9LCJwb3N0YWxDb2RlIjp7InRpbWVzdGFtcCI6MTY2MDY3NDc5NjMzNCwiYmFzZSI6Ijk4MTE2In0sInZhbGlkYXRlS2V5IjoicHJvZDp2MjpkOGRjY2NmMi0zNDc5LTRhYmItODlkYi1hMDIyM2I2YzRmZjEifQ%3D%3D; _astc=a90c415f4aa683a6946d96c09b6578e6; wmlh=d4831d3c66d3a76c555ec3826b29dac4556990c5a6188d6c05b7f34ff1192735; dimensionData=821; akavpau_p1=1660675487~id=f8da8fb64aa0512d1e760306e14fb31b; AID=wmlspartner%253D0%253Areflectorid%253D0000000000000000000000%253Alastupd%253D1660675078985; akavpau_p2=1660676085~id=fda97dc5adc3a4a2b13f551048666ba0; com.wm.reflector=\"reflectorid:0000000000000000000000@lastupd:1660675486000@firstcreate:1660674794664\"; xptwg=2430688244:15CE3C771A06F40:386535F:DBD28C04:28BFB2FB:458CABED:; TS012768cf=01e92ffd082cdafda16814c9fbbd1fe2722d6afd7717862faf1fe8e39186c957f457c8376ffccba92b979020b117d18c21a7c4f7db; TS01a90220=01e92ffd082cdafda16814c9fbbd1fe2722d6afd7717862faf1fe8e39186c957f457c8376ffccba92b979020b117d18c21a7c4f7db; TS2a5e0c5c027=08074ac0edab200034c6372d1a05eaa49033c01be9677251845a3fcebd121c8f5dfd74ea5ee18ad308c5504390113000d2a1395d4ea330ff9c1863f161fabc33cdd6fe26277ff0718127049c3e06490457b0c26dc389b97bd5ad22406087aec7; bm_sv=B4E13460496FE332B223C78418ADC951~YAAQfY0duBNW6ZKCAQAAF/T4pxAVFK+frrstrmL3BsHVqc9iRYpt3QtrUP78b5xl5TQ+WRlNOWZpsSmssokTvhSG8UuD0+AmKcMy93dsjHIiM/oUW4utUWtbB+k3R6WoC2V2ppOOItNtsc0/WzV37XJ2zSUyJT7GEASrOZ4qD7xsiIKxhT4jmhZfzqAYdQFP3PU1nEAmQ0Z0kZxCjAIGhBBuIc7rylOgdz8Ol7+UKxH21wu8JsujBZG8H/ELPKLZ0r8=~1");
+        httpConn.setRequestProperty("device_profile_ref_id", "kx7a34qtoaQFLeCId5v6irlUoepE6-ND6DDY");
+        httpConn.setRequestProperty("origin", "https://www.walmart.com");
+        httpConn.setRequestProperty("pragma", "no-cache");
+        httpConn.setRequestProperty("referer", "https://www.walmart.com/browse/feeding/baby-formula/5427_133283_4720344?redirectQuery=baby+formula&search_redirect=true&affinityOverride=default");
+        httpConn.setRequestProperty("sec-ch-ua", "\".Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"103\", \"Chromium\";v=\"103\"");
+        httpConn.setRequestProperty("sec-ch-ua-mobile", "?0");
+        httpConn.setRequestProperty("sec-ch-ua-platform", "\"macOS\"");
+        httpConn.setRequestProperty("sec-fetch-dest", "empty");
+        httpConn.setRequestProperty("sec-fetch-mode", "cors");
+        httpConn.setRequestProperty("sec-fetch-site", "same-origin");
+        httpConn.setRequestProperty("traceparent", "I2AapAK20LEN0wfz8P3DA4dfnnTqQ79FXfSw");
+        httpConn.setRequestProperty("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36");
+        httpConn.setRequestProperty("wm_mp", "true");
+        httpConn.setRequestProperty("wm_page_url", "https://www.walmart.com/browse/feeding/baby-formula/5427_133283_4720344?redirectQuery=baby+formula&search_redirect=true&affinityOverride=default");
+        httpConn.setRequestProperty("wm_qos.correlation_id", "I2AapAK20LEN0wfz8P3DA4dfnnTqQ79FXfSw");
+        httpConn.setRequestProperty("x-apollo-operation-name", "Browse");
+        httpConn.setRequestProperty("x-enable-server-timing", "1");
+        httpConn.setRequestProperty("x-latency-trace", "1");
+        httpConn.setRequestProperty("x-o-bu", "WALMART-US");
+        httpConn.setRequestProperty("x-o-ccm", "server");
+        httpConn.setRequestProperty("x-o-correlation-id", "I2AapAK20LEN0wfz8P3DA4dfnnTqQ79FXfSw");
+        httpConn.setRequestProperty("x-o-gql-query", "query Browse");
+        httpConn.setRequestProperty("x-o-mart", "B2C");
+        httpConn.setRequestProperty("x-o-platform", "rweb");
+        httpConn.setRequestProperty("x-o-platform-version", "main-1.13.0-26e552");
+        httpConn.setRequestProperty("x-o-segment", "oaoh");
+
+        httpConn.setDoOutput(true);
+        OutputStreamWriter writer = new OutputStreamWriter(httpConn.getOutputStream());
+        writer.write("{\"query\":\"query Browse( $query:String $page:Int $prg:Prg! $facet:String $sort:Sort $catId:String! $max_price:String $min_price:String $module_search:String $affinityOverride:AffinityOverride $ps:Int $ptss:String $beShelfId:String $fitmentFieldParams:JSON ={}$fitmentSearchParams:JSON ={}$rawFacet:String $seoPath:String $trsp:String $fetchMarquee:Boolean! $fetchSkyline:Boolean! $additionalQueryParams:JSON ={}$enablePortableFacets:Boolean = false $intentSource:IntentSource $tenant:String! $enableFacetCount:Boolean = true $pageType:String! = \\\"BrowsePage\\\" $marketSpecificParams:String ){search( query:$query page:$page prg:$prg facet:$facet sort:$sort cat_id:$catId max_price:$max_price min_price:$min_price module_search:$module_search affinityOverride:$affinityOverride additionalQueryParams:$additionalQueryParams ps:$ps ptss:$ptss trsp:$trsp intentSource:$intentSource _be_shelf_id:$beShelfId pageType:$pageType ){query searchResult{...BrowseResultFragment}}contentLayout( channel:\\\"WWW\\\" pageType:$pageType tenant:$tenant version:\\\"v1\\\" searchArgs:{query:$query cat_id:$catId _be_shelf_id:$beShelfId prg:$prg}){modules{...ModuleFragment configs{...on EnricherModuleConfigsV1{zoneV1}__typename...on _TempoWM_GLASSWWWSearchSortFilterModuleConfigs{facetsV1 @skip(if:$enablePortableFacets){...FacetFragment}topNavFacets @include(if:$enablePortableFacets){...FacetFragment}allSortAndFilterFacets @include(if:$enablePortableFacets){...FacetFragment}}...on TempoWM_GLASSWWWPillsModuleConfigs{moduleSource pillsV2{...PillsModuleFragment}}...TileTakeOverProductFragment...on TempoWM_GLASSWWWSearchFitmentModuleConfigs{fitments( fitmentSearchParams:$fitmentSearchParams fitmentFieldParams:$fitmentFieldParams ){...FitmentFragment sisFitmentResponse{...BrowseResultFragment}}}...on TempoWM_GLASSWWWStoreSelectionHeaderConfigs{fulfillmentMethodLabel storeDislayName}...on TempoWM_GLASSWWWSponsoredProductCarouselConfigs{_rawConfigs}...PopularInModuleFragment...CopyBlockModuleFragment...BannerModuleFragment...HeroPOVModuleFragment...InlineSearchModuleFragment...MarqueeDisplayAdConfigsFragment @include(if:$fetchMarquee)...SkylineDisplayAdConfigsFragment @include(if:$fetchSkyline)...HorizontalChipModuleConfigsFragment...SkinnyBannerFragment}}...LayoutFragment pageMetadata{location{pickupStore deliveryStore intent postalCode stateOrProvinceCode city storeId accessPointId accessType spokeNodeId}pageContext}}seoBrowseMetaData( id:$catId facets:$rawFacet path:$seoPath facet_query_param:$facet _be_shelf_id:$beShelfId marketSpecificParams:$marketSpecificParams ){metaTitle metaDesc metaCanon h1 noIndex}}fragment BrowseResultFragment on SearchInterface{title aggregatedCount...BreadCrumbFragment...ShelfDataFragment...DebugFragment...ItemStacksFragment...PageMetaDataFragment...PaginationFragment...RequestContextFragment...ErrorResponse modules{facetsV1 @skip(if:$enablePortableFacets){...FacetFragment}topNavFacets @include(if:$enablePortableFacets){...FacetFragment}allSortAndFilterFacets @include(if:$enablePortableFacets){...FacetFragment}pills{...PillsModuleFragment}}}fragment ModuleFragment on TempoModule{name version type moduleId schedule{priority}matchedTrigger{zone}}fragment LayoutFragment on ContentLayout{layouts{id layout}}fragment BreadCrumbFragment on SearchInterface{breadCrumb{id name url}}fragment ShelfDataFragment on SearchInterface{shelfData{shelfName shelfId}}fragment DebugFragment on SearchInterface{debug{sisUrl adsUrl}}fragment ItemStacksFragment on SearchInterface{itemStacks{displayMessage meta{adsBeacon{adUuid moduleInfo max_ads}query stackId stackType title layoutEnum totalItemCount totalItemCountDisplay viewAllParams{query cat_id sort facet affinityOverride recall_set min_price max_price}}itemsV2{...ItemFragment...InGridMarqueeAdFragment...TileTakeOverTileFragment}}}fragment ItemFragment on Product{__typename id usItemId fitmentLabel name checkStoreAvailabilityATC seeShippingEligibility brand type shortDescription weightIncrement imageInfo{...ProductImageInfoFragment}canonicalUrl externalInfo{url}itemType category{path{name url}}badges{flags{...on BaseBadge{key text type id}...on PreviouslyPurchasedBadge{id text key lastBoughtOn numBought}}tags{...on BaseBadge{key text type}}}classType averageRating numberOfReviews esrb mediaRating salesUnitType sellerId sellerName hasSellerBadge availabilityStatusV2{display value}groupMetaData{groupType groupSubType numberOfComponents groupComponents{quantity offerId componentType productDisplayName}}productLocation{displayValue aisle{zone aisle}}fulfillmentSpeed offerId preOrder{...PreorderFragment}priceInfo{...ProductPriceInfoFragment}variantCriteria{...VariantCriteriaFragment}snapEligible fulfillmentBadge fulfillmentTitle fulfillmentType brand manufacturerName showAtc sponsoredProduct{spQs clickBeacon spTags viewBeacon}showOptions showBuyNow rewards{eligible state minQuantity rewardAmt promotionId selectionToken cbOffer term expiry description}}fragment ProductImageInfoFragment on ProductImageInfo{thumbnailUrl size}fragment ProductPriceInfoFragment on ProductPriceInfo{priceRange{minPrice maxPrice}currentPrice{...ProductPriceFragment}comparisonPrice{...ProductPriceFragment}wasPrice{...ProductPriceFragment}unitPrice{...ProductPriceFragment}listPrice{...ProductPriceFragment}savingsAmount{...ProductSavingsFragment}shipPrice{...ProductPriceFragment}subscriptionPrice{priceString subscriptionString}priceDisplayCodes{priceDisplayCondition finalCostByWeight submapType}}fragment PreorderFragment on PreOrder{isPreOrder preOrderMessage preOrderStreetDateMessage}fragment ProductPriceFragment on ProductPrice{price priceString variantPriceString priceType currencyUnit priceDisplay}fragment ProductSavingsFragment on ProductSavings{amount percent priceString}fragment VariantCriteriaFragment on VariantCriterion{name type id isVariantTypeSwatch variantList{id images name rank swatchImageUrl availabilityStatus products selectedProduct{canonicalUrl usItemId}}}fragment InGridMarqueeAdFragment on MarqueePlaceholder{__typename type moduleLocation lazy}fragment TileTakeOverTileFragment on TileTakeOverProductPlaceholder{__typename type tileTakeOverTile{span title subtitle image{src alt}logoImage{src alt}backgroundColor titleTextColor subtitleTextColor tileCta{ctaLink{clickThrough{value}linkText title}ctaType ctaTextColor}}}fragment PageMetaDataFragment on SearchInterface{pageMetadata{storeSelectionHeader{fulfillmentMethodLabel storeDislayName}title canonical description location{addressId}}}fragment PaginationFragment on SearchInterface{paginationV2{maxPage pageProperties}}fragment RequestContextFragment on SearchInterface{requestContext{vertical isFitmentFilterQueryApplied searchMatchType categories{id name}}}fragment ErrorResponse on SearchInterface{errorResponse{correlationId source errorCodes errors{errorType statusCode statusMsg source}}}fragment PillsModuleFragment on PillsSearchInterface{title url image:imageV1{src alt}}fragment BannerModuleFragment on TempoWM_GLASSWWWSearchBannerConfigs{moduleType viewConfig{title image imageAlt displayName description url urlAlt appStoreLink appStoreLinkAlt playStoreLink playStoreLinkAlt}}fragment PopularInModuleFragment on TempoWM_GLASSWWWPopularInBrowseConfigs{seoBrowseRelmData(id:$catId){relm{id name url}}}fragment CopyBlockModuleFragment on TempoWM_GLASSWWWCopyBlockConfigs{copyBlock(id:$catId marketSpecificParams:$marketSpecificParams){cwc}}fragment FacetFragment on Facet{title name type layout min max selectedMin selectedMax unboundedMax stepSize isSelected values{id title name description type itemCount @include(if:$enableFacetCount) isSelected baseSeoURL}}fragment FitmentFragment on Fitments{partTypeIDs result{status formId position quantityTitle extendedAttributes{...FitmentFieldFragment}labels{...LabelFragment}resultSubTitle notes suggestions{...FitmentSuggestionFragment}}labels{...LabelFragment}savedVehicle{vehicleType{...VehicleFieldFragment}vehicleYear{...VehicleFieldFragment}vehicleMake{...VehicleFieldFragment}vehicleModel{...VehicleFieldFragment}additionalAttributes{...VehicleFieldFragment}}fitmentFields{...VehicleFieldFragment}fitmentForms{id fields{...FitmentFieldFragment}title labels{...LabelFragment}}}fragment LabelFragment on FitmentLabels{ctas{...FitmentLabelEntityFragment}messages{...FitmentLabelEntityFragment}links{...FitmentLabelEntityFragment}images{...FitmentLabelEntityFragment}}fragment FitmentLabelEntityFragment on FitmentLabelEntity{id label}fragment VehicleFieldFragment on FitmentVehicleField{id label value}fragment FitmentFieldFragment on FitmentField{id displayName value extended data{value label}dependsOn}fragment FitmentSuggestionFragment on FitmentSuggestion{id position loadIndex speedRating searchQueryParam labels{...LabelFragment}cat_id fitmentSuggestionParams{id value}}fragment HeroPOVModuleFragment on TempoWM_GLASSWWWHeroPovConfigsV1{povCards{card{povStyle image{mobileImage{...TempoCommonImageFragment}desktopImage{...TempoCommonImageFragment}}heading{text textColor textSize}subheading{text textColor}detailsView{backgroundColor isTransparent}ctaButton{button{linkText clickThrough{value}uid}}legalDisclosure{regularText shortenedText textColor textColorMobile legalBottomSheetTitle legalBottomSheetDescription}logo{...TempoCommonImageFragment}links{link{linkText}}}}}fragment TempoCommonImageFragment on TempoCommonImage{src alt assetId uid clickThrough{value}}fragment InlineSearchModuleFragment on TempoWM_GLASSWWWInlineSearchConfigs{headingText placeholderText}fragment MarqueeDisplayAdConfigsFragment on TempoWM_GLASSWWWMarqueeDisplayAdConfigs{_rawConfigs ad{...DisplayAdFragment}}fragment DisplayAdFragment on Ad{...AdFragment adContent{type data{__typename...AdDataDisplayAdFragment}}}fragment AdFragment on Ad{status moduleType platform pageId pageType storeId stateCode zipCode pageContext moduleConfigs adsContext adRequestComposite}fragment AdDataDisplayAdFragment on AdData{...on DisplayAd{json status}}fragment SkylineDisplayAdConfigsFragment on TempoWM_GLASSWWWSkylineDisplayAdConfigs{_rawConfigs ad{...SkylineDisplayAdFragment}}fragment SkylineDisplayAdFragment on Ad{...SkylineAdFragment adContent{type data{__typename...SkylineAdDataDisplayAdFragment}}}fragment SkylineAdFragment on Ad{status moduleType platform pageId pageType storeId stateCode zipCode pageContext moduleConfigs adsContext adRequestComposite}fragment SkylineAdDataDisplayAdFragment on AdData{...on DisplayAd{json status}}fragment HorizontalChipModuleConfigsFragment on TempoWM_GLASSWWWHorizontalChipModuleConfigs{chipModuleSource:moduleSource chipModule{title url{linkText title clickThrough{type value}}}chipModuleWithImages{title url{linkText title clickThrough{type value}}image{alt clickThrough{type value}height src title width}}}fragment SkinnyBannerFragment on TempoWM_GLASSWWWSkinnyBannerConfigs{bannerType desktopBannerHeight bannerImage{src title alt}mobileBannerHeight mobileImage{src title alt}clickThroughUrl{clickThrough{value}}backgroundColor heading{title fontColor}subHeading{title fontColor}bannerCta{ctaLink{linkText clickThrough{value}}textColor ctaType}}fragment TileTakeOverProductFragment on TempoWM_GLASSWWWTileTakeOverProductConfigs{dwebSlots mwebSlots TileTakeOverProductDetails{pageNumber span dwebPosition mwebPosition title subtitle image{src alt}logoImage{src alt}backgroundColor titleTextColor subtitleTextColor tileCta{ctaLink{clickThrough{value}linkText title}ctaType ctaTextColor}}}\",\"variables\":{\"id\":\"\",\"affinityOverride\":\"default\",\"dealsId\":\"\",\"query\":\"\",\"page\":1,\"prg\":\"desktop\",\"catId\":\"5427_133283_4720344\",\"facet\":\"\",\"sort\":\"best_match\",\"rawFacet\":\"\",\"seoPath\":\"\",\"ps\":40,\"ptss\":\"\",\"trsp\":\"\",\"beShelfId\":\"\",\"recall_set\":\"\",\"module_search\":\"\",\"min_price\":\"\",\"max_price\":\"\",\"storeSlotBooked\":\"\",\"additionalQueryParams\":{\"hidden_facet\":null,\"translation\":null},\"searchArgs\":{\"query\":\"\",\"cat_id\":\"5427_133283_4720344\",\"prg\":\"desktop\",\"facet\":\"\"},\"fitmentFieldParams\":{\"powerSportEnabled\":true},\"fitmentSearchParams\":{\"id\":\"\",\"affinityOverride\":\"default\",\"dealsId\":\"\",\"query\":\"\",\"page\":1,\"prg\":\"desktop\",\"catId\":\"5427_133283_4720344\",\"facet\":\"\",\"sort\":\"best_match\",\"rawFacet\":\"\",\"seoPath\":\"\",\"ps\":40,\"ptss\":\"\",\"trsp\":\"\",\"beShelfId\":\"\",\"recall_set\":\"\",\"module_search\":\"\",\"min_price\":\"\",\"max_price\":\"\",\"storeSlotBooked\":\"\",\"additionalQueryParams\":{\"hidden_facet\":null,\"translation\":null},\"searchArgs\":{\"query\":\"\",\"cat_id\":\"5427_133283_4720344\",\"prg\":\"desktop\",\"facet\":\"\"},\"cat_id\":\"5427_133283_4720344\",\"_be_shelf_id\":\"\"},\"fetchMarquee\":true,\"fetchSkyline\":true,\"fetchSbaTop\":false,\"enablePortableFacets\":true,\"tenant\":\"WM_GLASS\",\"enableFacetCount\":true,\"pageType\":\"BrowsePage\"}}");
+        writer.flush();
+        writer.close();
+        httpConn.getOutputStream().close();
+
+        InputStream responseStream = httpConn.getResponseCode() / 100 == 2
+                ? httpConn.getInputStream()
+                : httpConn.getErrorStream();
+        Scanner s = new Scanner(responseStream).useDelimiter("\\A");
+        String response = s.hasNext() ? s.next() : "";
+
+        JsonElement jsonElement = new JsonParser().parse(response);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json = gson.toJson(jsonElement);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
+        Object data = jsonMap.get("data");
+        Map<String, Object> dataMap = objectMapper.convertValue(data, Map.class);
+//        System.out.println(dataMap);
+
+        // GETTING BRANDS
+
+        Object contentLayout = dataMap.get("contentLayout");
+        Map<String, Object> contentLayoutMap = objectMapper.convertValue(contentLayout, Map.class);
+
+        Object modules = contentLayoutMap.get("modules");
+        ArrayList<Object> modulesAL = objectMapper.convertValue(modules, ArrayList.class);
+
+        Object chosenModule = modulesAL.get(4);
+        Map<String, Object> moduleMap = objectMapper.convertValue(chosenModule, Map.class);
+
+        Object configs = moduleMap.get("configs");
+        Map<String, Object> configsMap = objectMapper.convertValue(configs, Map.class);
+
+        Object topNavFacets = configsMap.get("topNavFacets");
+        ArrayList<Object> topNavFacetsAL = objectMapper.convertValue(topNavFacets, ArrayList.class);
+
+        Object chosenFacet = topNavFacetsAL.get(2);
+        Map<String, Object> chosenFacetMap = objectMapper.convertValue(chosenFacet, Map.class);
+
+        Object values = chosenFacetMap.get("values");
+        ArrayList<Object> brandsAL = objectMapper.convertValue(values, ArrayList.class);
+
+        HashMap<String, String> brands = new HashMap<String, String>();
+
+        for (Object brand : brandsAL) {
+            Map<String, String> brandInfo = objectMapper.convertValue(brand, Map.class);
+            brands.put(brandInfo.get("name").toLowerCase(), brandInfo.get("name"));
+        }
+
+        // GET PRODUCTS
+        Object search = dataMap.get("search");
+
+        Map<String, Object> searchMap = objectMapper.convertValue(search, Map.class);
+        Object searchResult = searchMap.get("searchResult");
+
+        Map<String, Object> searchResultMap = objectMapper.convertValue(searchResult, Map.class);
+        Object itemStacks = searchResultMap.get("itemStacks");
+
+        ArrayList<Object> itemStacksAL = objectMapper.convertValue(itemStacks, ArrayList.class);
+        Object firstInAL = itemStacksAL.get(0);
+
+        Map<String, Object> itemsV2Map = objectMapper.convertValue(firstInAL, Map.class);
+        Object itemsV2 = itemsV2Map.get("itemsV2");
+
+        ArrayList<Object> itemsAL = objectMapper.convertValue(itemsV2, ArrayList.class);
+
+
+        for (Object o : itemsAL) {
+
+            HashMap<String, String> newProduct = new HashMap<>();
+
+            Map<String, Object> item = objectMapper.convertValue(o, Map.class);
+
+            // get id
+            Object productID = item.get("usItemId");
+            String productIDStr = objectMapper.convertValue(productID, String.class);
+//			System.out.println("productID: " + productIDStr);
+            products.put(productIDStr, newProduct);
+
+            // get name
+            Object name = item.get("name");
+            String nameStr = objectMapper.convertValue(name, String.class).toLowerCase();
+//			System.out.println("name: " + name);
+            newProduct.put("name", nameStr);
+
+            // get buyURL
+            Object buyURL = item.get("canonicalUrl");
+            String buyURLStr = objectMapper.convertValue(buyURL, String.class);
+            int toIndex = buyURLStr.indexOf("?");
+            if (toIndex <= buyURLStr.length() && toIndex >= 0) {
+                buyURLStr = buyURLStr.substring(0, toIndex);
+            }
+//			System.out.println("buyURL: " + buyURLStr);
+            newProduct.put("buyURL", buyURLStr);
+
+            //get brand
+            boolean foundBrand = false;
+
+            for (String brand : brands.keySet()) {
+                if (nameStr.contains(brand)) {
+                    foundBrand = true;
+//					System.out.println("brand: " + brands.get(brand));
+                    newProduct.put("brand", brands.get(brand));
+                    break;
+                }
+            }
+
+            if (!foundBrand) {
+                for (String brand : brands.keySet()) {
+                    if (isBrand(nameStr, brand)) {
+//						System.out.println("brand: " + brands.get(brand));
+                        newProduct.put("brand", brands.get(brand));
+                        break;
+                    }
+                }
+            }
+
+            // get availability
+            Map<String, Object> itemAvailability = objectMapper.convertValue(item.get("availabilityStatusV2"), Map.class);
+//			System.out.println("availability: " + itemAvailability.get("display"));
+            Object inStockStatus = itemAvailability.get("display");
+            String inStockStatusStr = objectMapper.convertValue(inStockStatus, String.class);
+            String availabilityStr = "false";
+            if (inStockStatusStr.equals("In stock")) {
+                availabilityStr = "true";
+            }
+            newProduct.put("availability", availabilityStr);
+
+            // get price
+            Map<String, Object> itemPriceInfo = objectMapper.convertValue(item.get("priceInfo"), Map.class);
+            if (itemPriceInfo.get("currentPrice") != null) {
+                Map<String, Object> itemCurPrice = objectMapper.convertValue(itemPriceInfo.get("currentPrice"), Map.class);
+                Object price = itemCurPrice.get("price");
+                Double priceDouble = objectMapper.convertValue(price, Double.class);
+                String priceStr = objectMapper.convertValue(priceDouble, String.class);
+//				System.out.println("price: " + itemCurPrice.get("price"));
+                newProduct.put("price", priceStr);
+            } else if (itemPriceInfo.get("priceRange") != null) {
+                Map<String, Object> itemPriceRange = objectMapper.convertValue(itemPriceInfo.get("priceRange"), Map.class);
+                Object minPrice = itemPriceRange.get("minPrice");
+                Double minPriceDouble = objectMapper.convertValue(minPrice, Double.class);
+                Object maxPrice = itemPriceRange.get("maxPrice");
+                Double maxPriceDouble = objectMapper.convertValue(maxPrice, Double.class);
+                if (minPrice != maxPrice) {
+//					System.out.println("min price: " + minPrice);
+//					System.out.println("max price: " + maxPrice);
+                    String maxPriceStr = objectMapper.convertValue(maxPrice, String.class);
+                    newProduct.put("price", maxPriceStr);
+                } else {
+//					System.out.println("price: " + minPrice);
+                    String maxPriceStr = objectMapper.convertValue(maxPrice, String.class);
+                    newProduct.put("price", maxPriceStr);
+                }
+            }
+
+            // get thumbnail image URL
+            Object imageInfo = item.get("imageInfo");
+            Map<String, Object> imageInfoMap = objectMapper.convertValue(imageInfo, Map.class);
+            Object thumbnailURL = imageInfoMap.get("thumbnailUrl");
+            String thumbnailURLStr = objectMapper.convertValue(thumbnailURL, String.class);
+            newProduct.put("imageURL", thumbnailURLStr);
+        }
+        return products;
+    }
+
+    /////////////////////////////
+
+//        for (Object o : itemsAL) {
+//            // get name
+//            Map<String,Object> item = objectMapper.convertValue(o, Map.class);
+//            Object name = item.get("name");
+//            String nameStr = objectMapper.convertValue(name, String.class);
+//            System.out.println(name);
+//
+//            //get brand
+//            for (String brand : brands.keySet()) {
+////                System.out.println(brand);
+//                if (isBrand(nameStr, brand)) {
+//                    System.out.println(brand);
+//                    break;
+//                }
+//            }
+//
+//            // get availability
+//            Map<String,Object> itemAvailability = objectMapper.convertValue(item.get("availabilityStatusV2"), Map.class);
+//            System.out.println(itemAvailability.get("display"));
+//
+//            // get price
+//            Map<String,Object> itemPriceInfo = objectMapper.convertValue(item.get("priceInfo"), Map.class);
+//            if (itemPriceInfo.get("currentPrice") != null) {
+//                Map<String,Integer> itemCurPrice = objectMapper.convertValue(itemPriceInfo.get("currentPrice"), Map.class);
+//                System.out.println(itemCurPrice.get("price"));
+//            } else if (itemPriceInfo.get("priceRange") != null) {
+//                Map<String,Integer> itemPriceRange = objectMapper.convertValue(itemPriceInfo.get("priceRange"), Map.class);
+//                System.out.println(itemPriceRange.get("minPrice"));
+//                System.out.println(itemPriceRange.get("maxPrice"));
+//            }
+//
+//            // get thumbnail image URL
+//            Object imageInfo = item.get("imageInfo");
+//            Map<String,Object> imageInfoMap = objectMapper.convertValue(imageInfo, Map.class);
+//            Object thumbnailURL = imageInfoMap.get("thumbnailUrl");
+//            System.out.println(thumbnailURL);
+//
+//
+//            System.out.println("--------------------------------------------------------");
+//        }
+//}
+public static HashMap<String, HashMap> targetBabyFormula() throws IOException {
+    HashMap<String, HashMap> productsInfo = new HashMap<>();
+    ArrayList<String> productsTCINs = new ArrayList<>();
+
+//    String query_param = query_str.replace(" ", "+");
+    String query_param = "baby+formula";
+    String zip_code = "43065";
+    String latitude = "40.142"; // either user location or get store's lat long
+    String longitude = "-83.094"; // either user location or get store's lat long
+    String state = "OH";
+
+    // write something to fetch this info based on user info from store id table in db
+    String store_id = "2851";
+    String closest_stores = "2851%2C666%2C1236%2C1978%2C1969"; // ArrayList of 5 closest store IDs, join them with %2C
+    String store_name = "Powell".replace(" ", "%20");
+
+    URL url1 = new URL("https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&category=5xtkh&channel=WEB&count=24&default_purchasability_filter=true&include_sponsored=true&offset=0&page=%2Fc%2F5xtkh&platform=desktop&pricing_store_id=" + store_id + "&scheduled_delivery_store_id=" + store_id + "&store_ids=" + closest_stores + "&useragent=Mozilla%2F5.0+%28Macintosh%3B+Intel+Mac+OS+X+10_15_7%29+AppleWebKit%2F537.36+%28KHTML%2C+like+Gecko%29+Chrome%2F103.0.0.0+Safari%2F537.36&visitor_id=0182A834AB4902018CB76982CD0AAFFC&zip=" + zip_code);
+    HttpURLConnection httpConn1 = (HttpURLConnection) url1.openConnection();
+    httpConn1.setRequestMethod("GET");
+
+    httpConn1.setRequestProperty("authority", "redsky.target.com");
+    httpConn1.setRequestProperty("accept", "application/json");
+    httpConn1.setRequestProperty("accept-language", "en-US,en;q=0.9");
+    httpConn1.setRequestProperty("cache-control", "no-cache");
+    httpConn1.setRequestProperty("cookie", "TealeafAkaSid=AA2qZCey8WPhjd_8dDGOjZBdi4-COY-m; visitorId=0182A834AB4902018CB76982CD0AAFFC; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; egsSessionId=ad771178-a223-4dbe-b008-1f488f6b321d; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwianRpIjoiVEdULmRiYzNlYWVlMWMxZDQ4YWM4MDY0YzhjZDZjZGUzZjMyLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjNlY2NkZTY0MjM4NjEyMzE0ODNkZTIyYTFjYjBjOWI5YzgzN2IzNThkNGUzOTY0MjQ5YjZjNGM0NmRkZTc0NmIiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.f78pILkHPZKI4R63MWt8uE45LYzIiu4aOUwQbyLNgBBAa6tR1OvjuYZ6inVip1I1rrpqqc2Sh-CJu2GcUpntxYwoOkusOIsOyCBDjxfiWMRrZFy5kqjB714DtU1R_A42wm9nJ_xF2kDTRqtVH24qnMw-stIhnj2gzNlekpnRaJHzxSpO0YpjOi4ODNkLSZsn_-6h0slx_Pt9cxk0Efw0pNgHMkcZMlOan42M1AByOWJd871YzRk0GaStQCOhKi89H24jtLL2_NKY9rqccMtYD_pr9815m3Nd9xrXKnoV9fCHcpjEVmBAbbTb4yI_k_1ERNIXnDhrMUDv7pv1ATIFeA; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=8WaWo1FkOwUlQR0N8cWmcohigl3_puQ7C1Y11OV9Q8kpLX9lHgHdglL8ZQ0jQ9tpPw2I9kkQeOfQtpCJgLQhgA; __gads=ID=ddcb7a7fb07bf430:T=1660679401:S=ALNI_MbBY9l9mMReHROd2OESk1AIf5l-Kw; __gpi=UID=000007e931219333:T=1660679401:RT=1660679401:S=ALNI_MbSMgmPeS3kZEcXCUQVm48IX7o5eA; ffsession={%22sessionHash%22:%2217faa2889a8dcf1660679400791%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:1}; ci_pixmgr=other; _mitata=MTAzMDkwNmM0MDE2MzUwNDZkZWE1MDI5YWM5NTgxYTVjYTUzNDU5OTlhNGJiYWRjOWJjNzYzMmQ5MDI0YmQ1Mw==_/@#/1660679461_/@#/ce3CLn8d1XeqGrsQ_/@#/MjViNzJkYmQyZjQ5ZTJkM2NhYmEzMTAyYzQ1YWQ2NjBkMWY0NDBkMjIxMmUwMTI5YTRlM2JkZDY2NTY4ODY4MA==_/@#/000; _uetsid=9de61fe01d9c11ed91c677ca6f35ae04; _uetvid=9de650501d9c11ed8fad434bdecf9a58; _gcl_au=1.1.2028319006.1660679402; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code);
+    httpConn1.setRequestProperty("origin", "https://www.target.com");
+    httpConn1.setRequestProperty("pragma", "no-cache");
+    httpConn1.setRequestProperty("referer", "https://www.target.com/c/formula-nursing-feeding-baby/-/N-5xtkh?lnk=snav_rd_formula");
+    httpConn1.setRequestProperty("sec-ch-ua", "\".Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"103\", \"Chromium\";v=\"103\"");
+    httpConn1.setRequestProperty("sec-ch-ua-mobile", "?0");
+    httpConn1.setRequestProperty("sec-ch-ua-platform", "\"macOS\"");
+    httpConn1.setRequestProperty("sec-fetch-dest", "empty");
+    httpConn1.setRequestProperty("sec-fetch-mode", "cors");
+    httpConn1.setRequestProperty("sec-fetch-site", "same-site");
+    httpConn1.setRequestProperty("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36");
+
+    InputStream responseStream1 = httpConn1.getResponseCode() / 100 == 2
+            ? httpConn1.getInputStream()
+            : httpConn1.getErrorStream();
+    Scanner s1 = new Scanner(responseStream1).useDelimiter("\\A");
+    String response1 = s1.hasNext() ? s1.next() : "";
+//    System.out.println(response1);
+
+    JsonElement jsonElement1 = new JsonParser().parse(response1);
+    Gson gson1 = new GsonBuilder().setPrettyPrinting().create();
+    String json1 = gson1.toJson(jsonElement1);
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>() {
+    });
+    Object data1 = jsonMap1.get("data");
+
+    Map<String, Object> dataMap1 = objectMapper.convertValue(data1, Map.class);
+    Object search1 = dataMap1.get("search");
+
+    Map<String, Object> searchMap1 = objectMapper.convertValue(search1, Map.class);
+    Object products1 = searchMap1.get("products");
+
+    ArrayList<Object> productsAL1 = objectMapper.convertValue(products1, ArrayList.class);
+    for (Object product : productsAL1) {
+        HashMap<String, String> productInfo = new HashMap<>();
+
+        Map<String, Object> productMap = objectMapper.convertValue(product, Map.class);
+
+        // get title
+        Object item = productMap.get("item");
+        Map<String, Object> itemMap = objectMapper.convertValue(item, Map.class);
+        Object productDescription = itemMap.get("product_description");
+        Map<String, Object> productDescriptionMap = objectMapper.convertValue(productDescription, Map.class);
+        Object title = productDescriptionMap.get("title");
+        String titleStr = objectMapper.convertValue(title, String.class);
+        productsInfo.put(titleStr, productInfo);
+
+        // get tcin
+        Object productTCIN = productMap.get("tcin");
+        String productTCINStr = objectMapper.convertValue(productTCIN, String.class);
+        productsTCINs.add(productTCINStr);
+
+        // get brand name
+        if (itemMap.get("primary_brand") != null) {
+            Object brandInfo = itemMap.get("primary_brand");
+            Map<String, Object> brandInfoMap = objectMapper.convertValue(brandInfo, Map.class);
+            Object brandName = brandInfoMap.get("name");
+            String brandNameStr = objectMapper.convertValue(brandName, String.class);
+            productInfo.put("brand", brandNameStr);
+        }
+
+        // get price
+        Object price = productMap.get("price");
+        Map<String, Object> priceMap = objectMapper.convertValue(price, Map.class);
+        Object curPrice = priceMap.get("formatted_current_price");
+        String curPriceStr = objectMapper.convertValue(curPrice, String.class);
+        productInfo.put("price", curPriceStr);
+
+        // get primary image URL
+        Object enrichment = itemMap.get("enrichment");
+        Map<String, Object> enrichmentMap = objectMapper.convertValue(enrichment, Map.class);
+        Object images = enrichmentMap.get("images");
+        Map<String, Object> imagesMap = objectMapper.convertValue(images, Map.class);
+        Object primaryImage = imagesMap.get("primary_image_url");
+        String primaryImageStr = objectMapper.convertValue(primaryImage, String.class);
+        productInfo.put("imageURL", primaryImageStr);
+    }
+
+    // CONVERT ARRAYLIST OF PRODUCT TCINS INTO STRING
+    String productsTCINsStr = String.join("%2C", productsTCINs);
+
+    // TO GET AVAILABILITY INFO AND BUY URL FROM FULFILLMENT DATA
+    URL url = new URL("https://redsky.target.com/redsky_aggregations/v1/web_platform/product_summary_with_fulfillment_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&tcins=" + productsTCINsStr + "&store_id" + store_id + "&zip=" + zip_code + "&state=" + state + "&latitude=" + latitude + "&longitude=" + longitude + "&scheduled_delivery_store_id=" + store_id + "&required_store_id=" + store_id + "&has_required_store_id=true&channel=WEB&page=%2Fs%2F" + query_param);
+    HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
+    httpConn.setRequestMethod("GET");
+
+    httpConn.setRequestProperty("authority", "redsky.target.com");
+    httpConn.setRequestProperty("accept", "application/json");
+    httpConn.setRequestProperty("accept-language", "en-US,en;q=0.9");
+    httpConn.setRequestProperty("cache-control", "no-cache");
+    httpConn.setRequestProperty("cookie", "TealeafAkaSid=tW3sNScU-pf8QSWSBc4Dx8IhHnSIJ3G_; visitorId=0182A3D3FCBE0201845B982AB4154957; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; egsSessionId=528e5218-c05f-4434-b220-0970933cd8dd; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwianRpIjoiVEdULmNjNWUxYzUyNTUwNDRhNTFiY2Y4YzFkZDk2MGNiNDVmLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjQ4NTY1YWZiYWE2YzFiYjVmNjNkMTQ0ZTdmNjhlODYxMTU5YmQzZTczY2I0MjZjZTFjNTliOTI5MzI3ZDk5NGYiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.QRCI69lR_mSLIsnADDBYTVzlViOX5DNO4d-QNDbExhC0mFmEpn0mUED8L1g-XbB-_RLd8FH3ea2oC6fiEvb-VDOArr23IxklKnwTczlFx-8ukshGWpSrLBLmzr85sk0NO61Gb6wwUNcKfylAfO2ddm6oAa0b_wKehZr4N6oP2QbdKAi__OQXyMftyftLBRAUSvpOM9_zXB1UKysyqKK9nBTyBKi-SjgEsQNweBBwkZwbGBpqMcp7Urt6s8xCB3ciwjOQSG29rzYn_6OCdwvZVusvTS6ND6K2uS7Ut8gBLstl37MDGkXpIALAsD_6sVGyFXjiVogykPhGaWLhuhUuQw; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=YOQvrhY0Rc1OTlqCUPaQmCAQYYDyJl1hHAp2OyABjfmzyRYUPgVA0XYZ3iY03WMIVq1JWQ3U8UGbLuno1pzIog; __gads=ID=fcacfef16f82cade-22572175a1d400ad:T=1660605956:S=ALNI_MaeY6UxbBLJ7EheMAjpRt-PO6D3Pw; __gpi=UID=000007e4b59ef825:T=1660605956:RT=1660605956:S=ALNI_MbwRsUmwavf2MpuVsBXPiDrT7vBBw; ffsession={%22sessionHash%22:%22a38d7281033411660605955675%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:1}; ci_pixmgr=other; _uetsid=9d41daf01cf111ed8a934fc144aa43e9; _uetvid=9d41d7f01cf111edb1e87102d88101e0; _gcl_au=1.1.949956296.1660605957; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; _mitata=ZTJlZmJiYjVkYjUyOGQzZjM0YTM1NmVmZWY4ZTU2YzFiMzlkNzQ1OGZhOGZiNWUyZjc2YzkxNzhhNTkyNjY1ZQ==_/@#/1660606098_/@#/cyk4HguDDTbQp3kn_/@#/Y2EzMWVlZmQwMjA0NWVjOWZhMmRmMTgyMjc0M2MyMDYwZWRmOGMwY2M3ZTdkMzc3MzI3ZDk2ZDI2NDZmMDBkNg==_/@#/000");
+    httpConn.setRequestProperty("origin", "https://www.target.com");
+    httpConn.setRequestProperty("pragma", "no-cache");
+    httpConn.setRequestProperty("referer", "https://www.target.com/s?searchTerm=" + query_param);
+    httpConn.setRequestProperty("sec-ch-ua", "\".Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"103\", \"Chromium\";v=\"103\"");
+    httpConn.setRequestProperty("sec-ch-ua-mobile", "?0");
+    httpConn.setRequestProperty("sec-ch-ua-platform", "\"macOS\"");
+    httpConn.setRequestProperty("sec-fetch-dest", "empty");
+    httpConn.setRequestProperty("sec-fetch-mode", "cors");
+    httpConn.setRequestProperty("sec-fetch-site", "same-site");
+    httpConn.setRequestProperty("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36");
+
+    InputStream responseStream = httpConn.getResponseCode() / 100 == 2
+            ? httpConn.getInputStream()
+            : httpConn.getErrorStream();
+    Scanner s = new Scanner(responseStream).useDelimiter("\\A");
+    String response = s.hasNext() ? s.next() : "";
+
+    JsonElement jsonElement = new JsonParser().parse(response);
+    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    String json = gson.toJson(jsonElement);
+
+    Map<String, Object> jsonMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+    });
+    Object data = jsonMap.get("data");
+
+    Map<String, ArrayList<Object>> dataMap = objectMapper.convertValue(data, Map.class);
+    ArrayList<Object> productSummaries = dataMap.get("product_summaries");
+
+    for (Object product : productSummaries) {
+        Map<String, Object> productMap = objectMapper.convertValue(product, Map.class);
+
+
+        Object productItem = productMap.get("item");
+        Map<String, Object> productItemMap = objectMapper.convertValue(productItem, Map.class);
+
+
+        // get title
+        Object productDescription = productItemMap.get("product_description");
+        Map<String, Object> productDescriptionMap = objectMapper.convertValue(productDescription, Map.class);
+        Object productTitle = productDescriptionMap.get("title");
+//			System.out.println(productTitle);
+        String productTitleStr = objectMapper.convertValue(productTitle, String.class);
+        HashMap<String, String> selectedProduct = null;
+        if (productsInfo.get(productTitleStr) != null) {
+            selectedProduct = productsInfo.get(productTitleStr);
+        } else {
+            System.out.println("NOT FOUND! CHECK FOR ERRORS!");
+            System.out.println(productTitleStr);
+            continue;
+        }
+
+        // get brand
+
+        // get purchase url
+        Object enrichment = productItemMap.get("enrichment");
+        Map<String, String> enrichmentMap = objectMapper.convertValue(enrichment, Map.class);
+        String buyURL = enrichmentMap.get("buy_url");
+        selectedProduct.put("buyURL", buyURL);
+
+        // get image url
+
+        // get price
+        Object productPrice = productMap.get("price");
+        Map<String, Double> productPriceMap = objectMapper.convertValue(productPrice, Map.class);
+        Double productRTP = productPriceMap.get("current_retail");
+        selectedProduct.put("price", productRTP.toString());
+
+        // get availability
+        Object productFulfillment = productMap.get("fulfillment");
+        Map<String, Object> productFulfillmenteMap = objectMapper.convertValue(productFulfillment, Map.class);
+        // all store locations
+        boolean productInStock = objectMapper.convertValue(productFulfillmenteMap.get("is_out_of_stock_in_all_store_locations"), boolean.class);
+        String inStockAtAllStores = objectMapper.convertValue(!(productInStock), String.class);
+        selectedProduct.put("allStoresAvailability", inStockAtAllStores);
+//			// primary store location
+//			Object storeOptions = productFulfillmenteMap.get("store_options");
+//			ArrayList<Object> storeOptionsAL = objectMapper.convertValue(storeOptions, ArrayList.class);
+//			Object chosenStoreOption = storeOptionsAL.get(0);
+//			Map<String, Object> chosenStoreOptionMap = objectMapper.convertValue(chosenStoreOption, Map.class);
+//			Object inStoreOnly = chosenStoreOptionMap.get("in_store_only");
+//			Map<String, String> inStoreOnlyMap = objectMapper.convertValue(inStoreOnly, Map.class);
+//			String inStoreOnlyStatus = inStoreOnlyMap.get("availability_status");
+//			Object orderPickup = chosenStoreOptionMap.get("order_pickup");
+//			Map<String, String> orderPickupMap = objectMapper.convertValue(orderPickup, Map.class);
+//			String orderPickupStatus = orderPickupMap.get("availability_status");
+//			if (inStoreOnlyStatus.equals("IN_STOCK") || orderPickupStatus.equals("IN_STOCK")) {
+//				selectedProduct.put("closestStoreAvailability", "true");
+//			} else {
+//				selectedProduct.put("closestStoreAvailability", "false");
+//			}
+//			System.out.println("-----------------------------------------------------------------------");
+    }
+
+    return productsInfo;
+}
+
 
     public static boolean isBrand(String name, String brand) {
         String[] words = name.split(" ");
