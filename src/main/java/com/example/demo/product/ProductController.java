@@ -51,8 +51,16 @@ public class ProductController {
 
         String searchStr = queryParams.get("searchStr");
         String zip_code = queryParams.get("zipCode");
-        Object target = queryParams.get("target");
-        Object walmart = queryParams.get("walmart");
+//        Object target = queryParams.get("target");
+//        Object walmart = queryParams.get("walmart");
+        String target_store_id = queryParams.get("targetStoreId");
+        String walmart_store_id = queryParams.get("walmartStoreId");
+        String target_store_name = queryParams.get("targetStoreName");
+        String closest_stores = queryParams.get("targetClosest");
+        String state = queryParams.get("targetState");
+        String latitude = queryParams.get("targetLat");
+        String longitude = queryParams.get("targetLong");
+        String target_zip = queryParams.get("targetZip");
 
 //        String searchStr = "tampons";
 //        String searchStr = "plan b";
@@ -66,7 +74,7 @@ public class ProductController {
         // anything baby formula related has special redirect pages that cannot be accessed through the traditional api scraping route for all other search terms, need to handle separately
         if (searchStr.toLowerCase().contains("formula")) {
             try {
-                walmartRes = walmartBabyFormula(walmart);
+                walmartRes = walmartBabyFormula(walmart_store_id);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -82,7 +90,7 @@ public class ProductController {
             }
 
             try {
-                targetRes = targetBabyFormula(zip_code, target);
+                targetRes = targetBabyFormula(target_zip, target_store_id, target_store_name, closest_stores, state, latitude, longitude);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -101,7 +109,7 @@ public class ProductController {
             }
         } else {
             try {
-                targetRes = target(searchStr, zip_code, target);
+                targetRes = target(searchStr, target_zip, target_store_id, target_store_name, closest_stores, state, latitude, longitude);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -120,7 +128,7 @@ public class ProductController {
             }
 
             try {
-                walmartRes = walmart(searchStr, walmart);
+                walmartRes = walmart(searchStr, walmart_store_id);
             } catch (IOException e) {
                 System.out.println(e);
                 return new ArrayList<>();
@@ -162,20 +170,20 @@ public class ProductController {
         productService.updateProduct(productId, name, price, availability, quantity, imageURL);
     }
 
-    public static HashMap<String, HashMap> target(String query_str, String zip_code, Object targetInfo) throws IOException {
+    public static HashMap<String, HashMap> target(String query_str, String zip_code, String store_id, String store_name, String closest_stores, String state, String latitude, String longitude) throws IOException {
 
         HashMap<String, HashMap> productsInfo = new HashMap<>();
         ArrayList<String> productsTCINs = new ArrayList<>();
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
-
-        String store_id = target.get("store_id");
-        String closest_stores = target.get("closest_stores");
-        String store_name = target.get("store_name").replace(" ", "%20");
-        String latitude = target.get("latitude");
-        String longitude = target.get("longitude");
-        String state = target.get("state");
+//        Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
+//
+//        String store_id = target.get("store_id");
+//        String closest_stores = target.get("closest_stores");
+//        String store_name = target.get("store_name").replace(" ", "%20");
+//        String latitude = target.get("latitude");
+//        String longitude = target.get("longitude");
+//        String state = target.get("state");
         String query_param = query_str.replace(" ", "+");
 
 //        // TO GET TITLE, BRAND, IMAGEURL, PRICE INFO
@@ -193,7 +201,7 @@ public class ProductController {
 //        String store_name = "Powell".replace(" ", "%20");
 
         // GET MATCHING PRODUCTS ARRAY
-        URL url1 = new URL("https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&channel=WEB&count=24&default_purchasability_filter=true&include_sponsored=true&keyword=" + query_param + "&offset=0&page=%2Fs%2F" + query_param + "&platform=desktop&pricing_store_id=" + store_id + "&scheduled_delivery_store_id=" + store_id + "&store_ids=" + closest_stores + "&useragent=Mozilla%2F5.0+%28Macintosh%3B+Intel+Mac+OS+X+10_15_7%29+AppleWebKit%2F537.36+%28KHTML%2C+like+Gecko%29+Chrome%2F103.0.0.0+Safari%2F537.36&visitor_id=0182A3D3FCBE0201845B982AB4154957&zip=" + zip_code);
+        URL url1 = new URL("https://redsky.target.com/redsky_aggregations/v1/web/plp_search_v1?key=9f36aeafbe60771e321a7cc95a78140772ab3e96&channel=WEB&count=24&default_purchasability_filter=true&include_sponsored=true&keyword=" + query_param + "&offset=0&page=%2Fs%2F" + query_param + "&platform=desktop&pricing_store_id=" + store_id + "&scheduled_delivery_store_id=" + store_id + "&store_ids=" + closest_stores + "&useragent=Mozilla%2F5.0+%28Macintosh%3B+Intel+Mac+OS+X+10_15_7%29+AppleWebKit%2F537.36+%28KHTML%2C+like+Gecko%29+Chrome%2F103.0.0.0+Safari%2F537.36&visitor_id=0182A834AB4902018CB76982CD0AAFFC&zip=" + zip_code);
         HttpURLConnection httpConn1 = (HttpURLConnection) url1.openConnection();
         httpConn1.setRequestMethod("GET");
 
@@ -201,7 +209,7 @@ public class ProductController {
         httpConn1.setRequestProperty("accept", "application/json");
         httpConn1.setRequestProperty("accept-language", "en-US,en;q=0.9");
         httpConn1.setRequestProperty("cache-control", "no-cache");
-        httpConn1.setRequestProperty("cookie", "TealeafAkaSid=tW3sNScU-pf8QSWSBc4Dx8IhHnSIJ3G_; visitorId=0182A3D3FCBE0201845B982AB4154957; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; egsSessionId=528e5218-c05f-4434-b220-0970933cd8dd; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwianRpIjoiVEdULmNjNWUxYzUyNTUwNDRhNTFiY2Y4YzFkZDk2MGNiNDVmLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjQ4NTY1YWZiYWE2YzFiYjVmNjNkMTQ0ZTdmNjhlODYxMTU5YmQzZTczY2I0MjZjZTFjNTliOTI5MzI3ZDk5NGYiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.QRCI69lR_mSLIsnADDBYTVzlViOX5DNO4d-QNDbExhC0mFmEpn0mUED8L1g-XbB-_RLd8FH3ea2oC6fiEvb-VDOArr23IxklKnwTczlFx-8ukshGWpSrLBLmzr85sk0NO61Gb6wwUNcKfylAfO2ddm6oAa0b_wKehZr4N6oP2QbdKAi__OQXyMftyftLBRAUSvpOM9_zXB1UKysyqKK9nBTyBKi-SjgEsQNweBBwkZwbGBpqMcp7Urt6s8xCB3ciwjOQSG29rzYn_6OCdwvZVusvTS6ND6K2uS7Ut8gBLstl37MDGkXpIALAsD_6sVGyFXjiVogykPhGaWLhuhUuQw; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=YOQvrhY0Rc1OTlqCUPaQmCAQYYDyJl1hHAp2OyABjfmzyRYUPgVA0XYZ3iY03WMIVq1JWQ3U8UGbLuno1pzIog; __gads=ID=fcacfef16f82cade-22572175a1d400ad:T=1660605956:S=ALNI_MaeY6UxbBLJ7EheMAjpRt-PO6D3Pw; __gpi=UID=000007e4b59ef825:T=1660605956:RT=1660605956:S=ALNI_MbwRsUmwavf2MpuVsBXPiDrT7vBBw; ffsession={%22sessionHash%22:%22a38d7281033411660605955675%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:1}; ci_pixmgr=other; _uetsid=9d41daf01cf111ed8a934fc144aa43e9; _uetvid=9d41d7f01cf111edb1e87102d88101e0; _gcl_au=1.1.949956296.1660605957; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; _mitata=ZTJlZmJiYjVkYjUyOGQzZjM0YTM1NmVmZWY4ZTU2YzFiMzlkNzQ1OGZhOGZiNWUyZjc2YzkxNzhhNTkyNjY1ZQ==_/@#/1660606098_/@#/cyk4HguDDTbQp3kn_/@#/Y2EzMWVlZmQwMjA0NWVjOWZhMmRmMTgyMjc0M2MyMDYwZWRmOGMwY2M3ZTdkMzc3MzI3ZDk2ZDI2NDZmMDBkNg==_/@#/000");
+        httpConn1.setRequestProperty("cookie", "TealeafAkaSid=AA2qZCey8WPhjd_8dDGOjZBdi4-COY-m; visitorId=0182A834AB4902018CB76982CD0AAFFC; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwianRpIjoiVEdULmRiYzNlYWVlMWMxZDQ4YWM4MDY0YzhjZDZjZGUzZjMyLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjNlY2NkZTY0MjM4NjEyMzE0ODNkZTIyYTFjYjBjOWI5YzgzN2IzNThkNGUzOTY0MjQ5YjZjNGM0NmRkZTc0NmIiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.f78pILkHPZKI4R63MWt8uE45LYzIiu4aOUwQbyLNgBBAa6tR1OvjuYZ6inVip1I1rrpqqc2Sh-CJu2GcUpntxYwoOkusOIsOyCBDjxfiWMRrZFy5kqjB714DtU1R_A42wm9nJ_xF2kDTRqtVH24qnMw-stIhnj2gzNlekpnRaJHzxSpO0YpjOi4ODNkLSZsn_-6h0slx_Pt9cxk0Efw0pNgHMkcZMlOan42M1AByOWJd871YzRk0GaStQCOhKi89H24jtLL2_NKY9rqccMtYD_pr9815m3Nd9xrXKnoV9fCHcpjEVmBAbbTb4yI_k_1ERNIXnDhrMUDv7pv1ATIFeA; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=8WaWo1FkOwUlQR0N8cWmcohigl3_puQ7C1Y11OV9Q8kpLX9lHgHdglL8ZQ0jQ9tpPw2I9kkQeOfQtpCJgLQhgA; __gads=ID=ddcb7a7fb07bf430:T=1660679401:S=ALNI_MbBY9l9mMReHROd2OESk1AIf5l-Kw; __gpi=UID=000007e931219333:T=1660679401:RT=1660679401:S=ALNI_MbSMgmPeS3kZEcXCUQVm48IX7o5eA; ci_pixmgr=other; _gcl_au=1.1.2028319006.1660679402; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; ffsession={%22sessionHash%22:%2217faa2889a8dcf1660679400791%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:4%2C%22prevSearchTerm%22:%22non-search%22}; _mitata=NzU2NWZiNTM2YzM5ODVlODVjOGQxNjBiZWI2ZGVjYTdmNzIzYjBjNWQ2MDY4ZGZkNzMyZmVmM2Q1OTI0Y2UwZg==_/@#/1660695486_/@#/ce3CLn8d1XeqGrsQ_/@#/NDQxY2NjZjQ3OTBlYmRjNjVkNjQ2NzAyMWU2MzUxZmE2ODIyMDg0OTU1YzIzYTAzMDIwNjczOWUxY2FjMjYwMg==_/@#/000; _uetsid=9de61fe01d9c11ed91c677ca6f35ae04; _uetvid=9de650501d9c11ed8fad434bdecf9a58");
         httpConn1.setRequestProperty("origin", "https://www.target.com");
         httpConn1.setRequestProperty("pragma", "no-cache");
         httpConn1.setRequestProperty("referer", "https://www.target.com/s?searchTerm=" + query_param);
@@ -223,7 +231,7 @@ public class ProductController {
         Gson gson1 = new GsonBuilder().setPrettyPrinting().create();
         String json1 = gson1.toJson(jsonElement1);
 
-//		System.out.println(json1);
+		System.out.println(json1);
         Map<String, Object> jsonMap1 = objectMapper.readValue(json1, new TypeReference<Map<String, Object>>() {
         });
         Object data1 = jsonMap1.get("data");
@@ -292,7 +300,7 @@ public class ProductController {
         httpConn.setRequestProperty("accept", "application/json");
         httpConn.setRequestProperty("accept-language", "en-US,en;q=0.9");
         httpConn.setRequestProperty("cache-control", "no-cache");
-        httpConn.setRequestProperty("cookie", "TealeafAkaSid=tW3sNScU-pf8QSWSBc4Dx8IhHnSIJ3G_; visitorId=0182A3D3FCBE0201845B982AB4154957; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; egsSessionId=528e5218-c05f-4434-b220-0970933cd8dd; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwianRpIjoiVEdULmNjNWUxYzUyNTUwNDRhNTFiY2Y4YzFkZDk2MGNiNDVmLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjQ4NTY1YWZiYWE2YzFiYjVmNjNkMTQ0ZTdmNjhlODYxMTU5YmQzZTczY2I0MjZjZTFjNTliOTI5MzI3ZDk5NGYiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.QRCI69lR_mSLIsnADDBYTVzlViOX5DNO4d-QNDbExhC0mFmEpn0mUED8L1g-XbB-_RLd8FH3ea2oC6fiEvb-VDOArr23IxklKnwTczlFx-8ukshGWpSrLBLmzr85sk0NO61Gb6wwUNcKfylAfO2ddm6oAa0b_wKehZr4N6oP2QbdKAi__OQXyMftyftLBRAUSvpOM9_zXB1UKysyqKK9nBTyBKi-SjgEsQNweBBwkZwbGBpqMcp7Urt6s8xCB3ciwjOQSG29rzYn_6OCdwvZVusvTS6ND6K2uS7Ut8gBLstl37MDGkXpIALAsD_6sVGyFXjiVogykPhGaWLhuhUuQw; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiIzMjBmNzg4MC04NGZlLTQ1NWItYWFkYi1mYjg1OGU1NWRhYTgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA2OTIzNTYsImlhdCI6MTY2MDYwNTk1NiwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=YOQvrhY0Rc1OTlqCUPaQmCAQYYDyJl1hHAp2OyABjfmzyRYUPgVA0XYZ3iY03WMIVq1JWQ3U8UGbLuno1pzIog; __gads=ID=fcacfef16f82cade-22572175a1d400ad:T=1660605956:S=ALNI_MaeY6UxbBLJ7EheMAjpRt-PO6D3Pw; __gpi=UID=000007e4b59ef825:T=1660605956:RT=1660605956:S=ALNI_MbwRsUmwavf2MpuVsBXPiDrT7vBBw; ffsession={%22sessionHash%22:%22a38d7281033411660605955675%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:1}; ci_pixmgr=other; _uetsid=9d41daf01cf111ed8a934fc144aa43e9; _uetvid=9d41d7f01cf111edb1e87102d88101e0; _gcl_au=1.1.949956296.1660605957; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; _mitata=ZTJlZmJiYjVkYjUyOGQzZjM0YTM1NmVmZWY4ZTU2YzFiMzlkNzQ1OGZhOGZiNWUyZjc2YzkxNzhhNTkyNjY1ZQ==_/@#/1660606098_/@#/cyk4HguDDTbQp3kn_/@#/Y2EzMWVlZmQwMjA0NWVjOWZhMmRmMTgyMjc0M2MyMDYwZWRmOGMwY2M3ZTdkMzc3MzI3ZDk2ZDI2NDZmMDBkNg==_/@#/000");
+        httpConn.setRequestProperty("cookie", "TealeafAkaSid=AA2qZCey8WPhjd_8dDGOjZBdi4-COY-m; visitorId=0182A834AB4902018CB76982CD0AAFFC; sapphire=1; UserLocation=" + zip_code + "|" + latitude + "|" + longitude + "|" + state + "|US; accessToken=eyJraWQiOiJlYXMyIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwianRpIjoiVEdULmRiYzNlYWVlMWMxZDQ4YWM4MDY0YzhjZDZjZGUzZjMyLWwiLCJza3kiOiJlYXMyIiwic3V0IjoiRyIsImRpZCI6IjNlY2NkZTY0MjM4NjEyMzE0ODNkZTIyYTFjYjBjOWI5YzgzN2IzNThkNGUzOTY0MjQ5YjZjNGM0NmRkZTc0NmIiLCJzY28iOiJlY29tLm5vbmUsb3BlbmlkIiwiY2xpIjoiZWNvbS13ZWItMS4wLjAiLCJhc2wiOiJMIn0.f78pILkHPZKI4R63MWt8uE45LYzIiu4aOUwQbyLNgBBAa6tR1OvjuYZ6inVip1I1rrpqqc2Sh-CJu2GcUpntxYwoOkusOIsOyCBDjxfiWMRrZFy5kqjB714DtU1R_A42wm9nJ_xF2kDTRqtVH24qnMw-stIhnj2gzNlekpnRaJHzxSpO0YpjOi4ODNkLSZsn_-6h0slx_Pt9cxk0Efw0pNgHMkcZMlOan42M1AByOWJd871YzRk0GaStQCOhKi89H24jtLL2_NKY9rqccMtYD_pr9815m3Nd9xrXKnoV9fCHcpjEVmBAbbTb4yI_k_1ERNIXnDhrMUDv7pv1ATIFeA; idToken=eyJhbGciOiJub25lIn0.eyJzdWIiOiI0NDg5ZDJjMi1kNWY0LTQ5NTgtOGNkNS1hMDIxMzRmMjQ1NDgiLCJpc3MiOiJNSTYiLCJleHAiOjE2NjA3NjU4MDEsImlhdCI6MTY2MDY3OTQwMSwiYXNzIjoiTCIsInN1dCI6IkciLCJjbGkiOiJlY29tLXdlYi0xLjAuMCIsInBybyI6eyJmbiI6bnVsbCwiZW0iOm51bGwsInBoIjpmYWxzZSwibGVkIjpudWxsLCJsdHkiOmZhbHNlfX0.; refreshToken=8WaWo1FkOwUlQR0N8cWmcohigl3_puQ7C1Y11OV9Q8kpLX9lHgHdglL8ZQ0jQ9tpPw2I9kkQeOfQtpCJgLQhgA; __gads=ID=ddcb7a7fb07bf430:T=1660679401:S=ALNI_MbBY9l9mMReHROd2OESk1AIf5l-Kw; __gpi=UID=000007e931219333:T=1660679401:RT=1660679401:S=ALNI_MbSMgmPeS3kZEcXCUQVm48IX7o5eA; ci_pixmgr=other; _gcl_au=1.1.2028319006.1660679402; fiatsCookie=DSI_" + store_id + "|DSN_" + store_name + "|DSZ_" + zip_code + "; ffsession={%22sessionHash%22:%2217faa2889a8dcf1660679400791%22%2C%22prevPageName%22:%22home%20page%22%2C%22prevPageType%22:%22home%20page%22%2C%22prevPageUrl%22:%22https://www.target.com/%22%2C%22sessionHit%22:4%2C%22prevSearchTerm%22:%22non-search%22}; _mitata=NzU2NWZiNTM2YzM5ODVlODVjOGQxNjBiZWI2ZGVjYTdmNzIzYjBjNWQ2MDY4ZGZkNzMyZmVmM2Q1OTI0Y2UwZg==_/@#/1660695486_/@#/ce3CLn8d1XeqGrsQ_/@#/NDQxY2NjZjQ3OTBlYmRjNjVkNjQ2NzAyMWU2MzUxZmE2ODIyMDg0OTU1YzIzYTAzMDIwNjczOWUxY2FjMjYwMg==_/@#/000; _uetsid=9de61fe01d9c11ed91c677ca6f35ae04; _uetvid=9de650501d9c11ed8fad434bdecf9a58");
         httpConn.setRequestProperty("origin", "https://www.target.com");
         httpConn.setRequestProperty("pragma", "no-cache");
         httpConn.setRequestProperty("referer", "https://www.target.com/s?searchTerm=" + query_param);
@@ -390,16 +398,16 @@ public class ProductController {
         return productsInfo;
     }
 
-    public static HashMap<String, HashMap> walmart(String query_str, Object walmartInfo) throws IOException {
+    public static HashMap<String, HashMap> walmart(String query_str, String store_id) throws IOException {
         HashMap<String, HashMap> products = new HashMap<>();
         String response = "";
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
-
-        // user info
+//        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
+//
+//        // user info
         String query_param = query_str.replace(" ", "%20");
-        String store_id = walmart.get("store_id");
+//        String store_id = walmart.get("store_id");
 
 //        String zip_code = "98104"; // Seattle, WA
 //        String store_id = "3098"; // Renton, WA
@@ -874,14 +882,14 @@ public class ProductController {
 //		System.out.println(json);
     }
 
-    public static HashMap<String, HashMap> walmartBabyFormula(Object walmartInfo) throws IOException {
+    public static HashMap<String, HashMap> walmartBabyFormula(String store_id) throws IOException {
 
         HashMap<String, HashMap> products = new HashMap<>();
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
-
-        String store_id = walmart.get("store_id");
+//        Map<String, String> walmart = objectMapper.convertValue(walmartInfo, Map.class);
+//
+//        String store_id = walmart.get("store_id");
 //        String response = "";
 //        String store_id = "3098"; // Bellevue, WA
 //        String store_id = "2774"; // Dublin, OH
@@ -1138,19 +1146,19 @@ public class ProductController {
 //            System.out.println("--------------------------------------------------------");
 //        }
 //}
-public static HashMap<String, HashMap> targetBabyFormula(String zip_code, Object targetInfo) throws IOException {
+public static HashMap<String, HashMap> targetBabyFormula(String zip_code, String store_id, String store_name, String closest_stores, String state, String latitude, String longitude) throws IOException {
     HashMap<String, HashMap> productsInfo = new HashMap<>();
     ArrayList<String> productsTCINs = new ArrayList<>();
 
     ObjectMapper objectMapper = new ObjectMapper();
-    Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
-
-    String store_id = target.get("store_id");
-    String closest_stores = target.get("closest_stores");
-    String store_name = target.get("store_name").replace(" ", "%20");
-    String latitude = target.get("latitude");
-    String longitude = target.get("longitude");
-    String state = target.get("state");
+//    Map<String, String> target = objectMapper.convertValue(targetInfo, Map.class);
+//
+//    String store_id = target.get("store_id");
+//    String closest_stores = target.get("closest_stores");
+//    String store_name = target.get("store_name").replace(" ", "%20");
+//    String latitude = target.get("latitude");
+//    String longitude = target.get("longitude");
+//    String state = target.get("state");
 
 ////    String query_param = query_str.replace(" ", "+");
 //    String query_param = "baby+formula";
